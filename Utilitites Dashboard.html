@@ -1,0 +1,2339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet & Utilities Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js for parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Chart.js for Visuals -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <!-- SheetJS for Excel Export/Import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none !important; }
+        
+        /* Unified Maroon & Grey Theme */
+        .tab-active { border-bottom: 2px solid #881337; color: #881337; font-weight: 600; }
+        .sidebar-active { background-color: #1f2937; color: #fff; border-left: 4px solid #881337; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        @media print {
+            .no-print { display: none !important; }
+            aside { display: none !important; }
+            main { margin: 0 !important; width: 100% !important; overflow: visible !important; }
+            .print-expand { width: 100% !important; max-width: 100% !important; margin: 0 !important; box-shadow: none !important; }
+            canvas { max-width: 100% !important; }
+            .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 10px !important; }
+            .kpi-card { break-inside: avoid; border: 1px solid #e5e7eb; }
+            #salik_workspaceDetails, #darb_workspaceDetails, #fuel_workspaceData, #driver_workspaceData, #ict_workspaceData, #we_workspaceData { display: block !important; }
+            .print-scroll-reset { max-height: none !important; overflow-y: visible !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 h-screen overflow-hidden relative">
+
+    <!-- Login Screen -->
+    <div id="app-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">MNC Admin Portal</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Username</label>
+                    <input type="text" id="loginUsername" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-rose-900" placeholder="Enter username">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Password</label>
+                    <input type="password" id="loginPassword" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-rose-900" placeholder="Enter password" onkeypress="if(event.key === 'Enter') attemptLogin()">
+                </div>
+                <button onclick="attemptLogin()" class="w-full bg-rose-900 hover:bg-rose-800 text-white font-bold py-3 rounded-lg transition-colors mt-2">Login to Dashboard</button>
+                <p id="loginError" class="text-red-500 text-sm text-center hidden mt-2">Invalid credentials.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard App Wrapper -->
+    <div id="app-dashboard" class="hidden flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-gray-400 flex flex-col no-print shrink-0 shadow-xl z-20">
+            <div class="h-16 flex items-center px-6 border-b border-gray-800 bg-gray-950">
+                <span class="text-lg font-bold text-white tracking-wide">Admin Dashboard</span>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+                <div class="px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2 mt-4">Toll</div>
+                <button onclick="switchAppModule('salik')" id="nav-salik" class="sidebar-active w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-rose-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 104 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
+                    Salik (Dubai)
+                </button>
+                <button onclick="switchAppModule('darb')" id="nav-darb" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Darb (Abu Dhabi)
+                </button>
+
+                <div class="px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2 mt-6">Fleet</div>
+                <button onclick="switchAppModule('fuel')" id="nav-fuel" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-rose-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Fuel (Adnoc)
+                </button>
+                <button onclick="switchAppModule('driver')" id="nav-driver" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 104 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
+                    Vehicle Log
+                </button>
+
+                <div class="px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2 mt-6">Utility</div>
+                <button onclick="switchAppModule('ict')" id="nav-ict" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-rose-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    Telecommunication (E&)
+                </button>
+                <button onclick="switchAppModule('we')" id="nav-we" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    WED (Taqa, Dewa)
+                </button>
+
+                <!-- Admin Tools Section in Sidebar -->
+                <div class="px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2 mt-6">Admin Tools</div>
+                <button onclick="openPasswordModal()" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                    Change Password
+                </button>
+                <button onclick="backupSystemData()" class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    Backup Data
+                </button>
+                <label class="w-full flex items-center px-6 py-3 text-sm font-medium transition-colors hover:bg-gray-800 hover:text-white cursor-pointer">
+                    <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Restore Data
+                    <input type="file" id="restoreUpload" accept=".json" class="hidden" onchange="restoreSystemData(event)">
+                </label>
+                <button onclick="logout()" class="w-full flex items-center px-6 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-gray-800 hover:text-red-400">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </button>
+
+            </nav>
+            <div class="p-4 border-t border-gray-800 text-xs text-gray-500">
+                &copy; 2026 All rights reserved.(AR)
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50">
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0 z-10 no-print">
+                <h1 class="text-xl font-bold text-gray-800 tracking-tight">Fleet Efficiency & Utility Insights Dashboard</h1>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5"></span> System Online
+                </span>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-8">
+                
+                <!-- 1. SALIK MODULE -->
+                <div id="module-salik" class="max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">Salik Analytics</h2><p class="text-sm text-gray-500 mt-1">Toll Gate Transactions.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload PDF<input type="file" id="salik_pdfUpload" accept=".pdf, .xls, .xlsx" class="hidden"></label>
+                            <button id="salik_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('salik')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Total: <span id="salik_dbTotalCount">0</span> Trips | AED <span id="salik_dbTotalAmount">0.00</span></span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="salik_filterStart" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="salik_filterEnd" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Month</label><select id="salik_filterMonth" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Vehicle</label><select id="salik_filterVehicle" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Vehicles</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Filtered Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="salik_kpiTotalAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Filtered Transactions</p><p class="text-2xl font-bold text-gray-800" id="salik_kpiTransactions">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Avg Per Transaction</p><p class="text-2xl font-bold text-gray-800">AED <span id="salik_kpiAvgAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Toll Gates Visited</p><p class="text-2xl font-bold text-gray-800" id="salik_kpiGates">0</p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="salik_tabOverview" onclick="switchSalikTab('Overview', this)" class="pb-3 text-sm tab-active transition-all">Visual Overview (Bar Charts)</button>
+                        <button id="salik_tabDetails" onclick="switchSalikTab('Details', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Detailed Ledger</button>
+                    </div>
+                    <div id="salik_workspaceOverview" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 id="salik_amountChartTitle" class="text-sm font-bold text-gray-700 mb-4">Amount by Vehicle</h3><div class="h-64"><canvas id="salik_vehicleAmountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 id="salik_trendChartTitle" class="text-sm font-bold text-gray-700 mb-4">Total Spending per Vehicle</h3><div class="h-64"><canvas id="salik_vehicleTrendChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Transaction Volume</h3><div class="h-64"><canvas id="salik_monthlyCountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Spending Trend</h3><div class="h-64"><canvas id="salik_monthlySpendChart"></canvas></div></div>
+                        </div>
+                    </div>
+                    <div id="salik_workspaceDetails" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Transaction ID</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Transaction Date & Time</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Toll Gate</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Vehicle Plate</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Amount (AED)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="salik_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. DARB MODULE -->
+                <div id="module-darb" class="hidden max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">DARB Analytics</h2><p class="text-sm text-gray-500 mt-1">Toll Gate Transactions.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload PDF<input type="file" id="darb_pdfUpload" accept=".pdf" class="hidden"></label>
+                            <button id="darb_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('darb')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Total: <span id="darb_dbTotalCount">0</span> Trips | AED <span id="darb_dbTotalAmount">0.00</span></span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="darb_filterStart" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="darb_filterEnd" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Month</label><select id="darb_filterMonth" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Vehicle</label><select id="darb_filterVehicle" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Vehicles</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Filtered Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="darb_kpiTotalAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Filtered Transactions</p><p class="text-2xl font-bold text-gray-800" id="darb_kpiTransactions">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Avg Per Transaction</p><p class="text-2xl font-bold text-gray-800">AED <span id="darb_kpiAvgAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Toll Gates Visited</p><p class="text-2xl font-bold text-gray-800" id="darb_kpiGates">0</p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="darb_tabOverview" onclick="switchDarbTab('Overview', this)" class="pb-3 text-sm tab-active transition-all">Visual Overview (Bar Charts)</button>
+                        <button id="darb_tabDetails" onclick="switchDarbTab('Details', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Detailed Ledger</button>
+                    </div>
+                    <div id="darb_workspaceOverview" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 id="darb_amountChartTitle" class="text-sm font-bold text-gray-700 mb-4">Amount by Vehicle</h3><div class="h-64"><canvas id="darb_vehicleAmountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 id="darb_trendChartTitle" class="text-sm font-bold text-gray-700 mb-4">Total Spending per Vehicle</h3><div class="h-64"><canvas id="darb_vehicleTrendChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Transaction Volume</h3><div class="h-64"><canvas id="darb_monthlyCountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Spending Trend</h3><div class="h-64"><canvas id="darb_monthlySpendChart"></canvas></div></div>
+                        </div>
+                    </div>
+                    <div id="darb_workspaceDetails" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Reference Number</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Transaction Date & Time</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Toll Gate</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Vehicle Plate</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Amount (AED)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="darb_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. FUEL MODULE -->
+                <div id="module-fuel" class="hidden max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">Fuel Analytics</h2><p class="text-sm text-gray-500 mt-1">Adnoc Fuel Transactions.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload Excel<input type="file" id="fuel_excelUpload" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                            <button id="fuel_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('fuel')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Total: <span id="fuel_dbTotalCount">0</span> Records</span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="fuel_filterStart" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="fuel_filterEnd" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter by Month</label><select id="fuel_filterMonth" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter by Vehicle</label><select id="fuel_filterVehicle" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"><option value="all">All Vehicles (Tokens)</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Spend</p><p class="text-2xl font-bold text-gray-800">AED <span id="fuel_kpiTotalAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Volume (Liters)</p><p class="text-2xl font-bold text-gray-800"><span id="fuel_kpiTotalVolume">0.00</span> L</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Active Vehicles</p><p class="text-2xl font-bold text-gray-800" id="fuel_kpiUniqueVehicles">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Transactions</p><p class="text-2xl font-bold text-gray-800" id="fuel_kpiTransactions">0</p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="fuel_tabVisuals" onclick="switchFuelTab('Visuals', this)" class="pb-3 text-sm tab-active transition-all">Report Visuals (Bar Charts)</button>
+                        <button id="fuel_tabData" onclick="switchFuelTab('Data', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Detailed Database</button>
+                    </div>
+                    <div id="fuel_workspaceVisuals" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Vehicle-wise Spending (AED)</h3><div class="h-64"><canvas id="fuel_vehicleChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Month-wise Spending & Volume</h3><div class="h-64"><canvas id="fuel_monthChart"></canvas></div></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Date-wise Daily Spend Trend (Day Only)</h3><div class="h-72"><canvas id="fuel_dateTrendChart"></canvas></div></div>
+                    </div>
+                    <div id="fuel_workspaceData" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Date & Time</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Vehicle (Token Name)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Station Name</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Volume (L)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Amount (AED)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center">Invoice ID</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="fuel_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. DRIVER LOG MODULE -->
+                <div id="module-driver" class="hidden max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">Vehicle Log Analytics</h2><p class="text-sm text-gray-500 mt-1">Vehicle Trips.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload Excel<input type="file" id="driver_excelUpload" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                            <button id="driver_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('driver')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Daily Summaries: <span id="driver_dbTotalCount">0</span> | Total KM <span id="driver_dbTotalKM">0</span></span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="driver_filterStart" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="driver_filterEnd" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter by Month</label><select id="driver_filterMonth" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter by Vehicle</label><select id="driver_filterVehicle" class="w-full bg-gray-50 border border-gray-200 rounded-md p-2 text-sm"><option value="all">All Vehicles</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Distance (KM)</p><p class="text-2xl font-bold text-gray-800"><span id="driver_kpiTotalKM">0</span> KM</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Logged Days</p><p class="text-2xl font-bold text-gray-800" id="driver_kpiTrips">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Active Drivers</p><p class="text-2xl font-bold text-gray-800" id="driver_kpiDrivers">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Active Vehicles</p><p class="text-2xl font-bold text-gray-800" id="driver_kpiVehicles">0</p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="driver_tabVisuals" onclick="switchDriverTab('Visuals', this)" class="pb-3 text-sm tab-active transition-all">Running Visuals (Bar Charts)</button>
+                        <button id="driver_tabData" onclick="switchDriverTab('Data', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Daily Vehicle Summaries</button>
+                    </div>
+                    <div id="driver_workspaceVisuals" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Driver-wise Running (KM)</h3><div class="h-64"><canvas id="driver_barChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Running Trend (KM)</h3><div class="h-64"><canvas id="driver_monthChart"></canvas></div></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Daily Running Trend (KM)</h3><div class="h-64"><canvas id="driver_dateTrendChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Vehicle-wise Running (KM)</h3><div class="h-64"><canvas id="driver_vehicleDonut"></canvas></div></div>
+                        </div>
+                    </div>
+                    <div id="driver_workspaceData" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Date</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Driver(s)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Vehicle No</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center">Trips Recorded</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Total KM</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="driver_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. ICT MODULE -->
+                <div id="module-ict" class="hidden max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">E& Analytics</h2><p class="text-sm text-gray-500 mt-1">Monthly Usage Analysis for Telecom & Internet.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload Excel<input type="file" id="ict_excelUpload" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                            <button id="ict_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('ict')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Records: <span id="ict_dbTotalCount">0</span> | AED <span id="ict_dbTotalAmount">0.00</span></span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="ict_filterStart" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="ict_filterEnd" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Month</label><select id="ict_filterMonth" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Account</label><select id="ict_filterAccount" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Accounts</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="ict_kpiTotalAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Bill Records</p><p class="text-2xl font-bold text-gray-800" id="ict_kpiTransactions">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Active Accounts</p><p class="text-2xl font-bold text-gray-800" id="ict_kpiAccounts">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Avg Bill Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="ict_kpiAvgAmount">0.00</span></p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="ict_tabVisuals" onclick="switchIctTab('Visuals', this)" class="pb-3 text-sm tab-active transition-all">Month/Account Visuals</button>
+                        <button id="ict_tabData" onclick="switchIctTab('Data', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Detailed Database</button>
+                    </div>
+                    <div id="ict_workspaceVisuals" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Total Amount by Account</h3><div class="h-64"><canvas id="ict_accountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Spending Trend</h3><div class="h-64"><canvas id="ict_monthTrendChart"></canvas></div></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Month-wise Account Breakdown (AED)</h3><div class="h-72"><canvas id="ict_stackedMonthChart"></canvas></div></div>
+                    </div>
+                    <div id="ict_workspaceData" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Date</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Billing Month</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Account Number</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Amount (AED)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="ict_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. W&E MODULE -->
+                <div id="module-we" class="hidden max-w-7xl mx-auto block print-expand">
+                    <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4 no-print">
+                        <div><h2 class="text-2xl font-bold text-gray-800">Water & Electricity Analytics</h2><p class="text-sm text-gray-500 mt-1">Monthly Usage Analysis for Water and Electricity.</p></div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="bg-rose-900 hover:bg-rose-800 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium cursor-pointer transition flex items-center gap-2">📄 Upload Utility Excel<input type="file" id="we_excelUpload" accept=".xlsx, .xls, .csv" class="hidden"></label>
+                            <button id="we_exportBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">📥 Export Excel</button>
+                            <button onclick="window.print()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🖨️ Print</button>
+                            <button onclick="openClearModal('we')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-md shadow-sm text-sm font-medium transition ml-2">Clear Data Options</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-200 border border-gray-300 rounded-md p-3 mb-6 flex justify-between items-center text-sm no-print">
+                        <span class="text-rose-900 font-bold bg-white px-3 py-1 rounded shadow-sm border border-gray-300">Records: <span id="we_dbTotalCount">0</span> | AED <span id="we_dbTotalAmount">0.00</span></span>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-5 no-print">
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Start Date</label><input type="date" id="we_filterStart" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">End Date</label><input type="date" id="we_filterEnd" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Month</label><select id="we_filterMonth" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Months</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Account</label><select id="we_filterAccount" class="w-full bg-gray-50 border-gray-200 rounded-md p-2 text-sm border"><option value="all">All Accounts</option></select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-900 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="we_kpiTotalAmount">0.00</span></p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-700 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Total Bill Records</p><p class="text-2xl font-bold text-gray-800" id="we_kpiTransactions">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-rose-800 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Active Accounts</p><p class="text-2xl font-bold text-gray-800" id="we_kpiAccounts">0</p></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-gray-600 kpi-card"><p class="text-xs uppercase font-semibold text-gray-500 mb-1">Avg Bill Amount</p><p class="text-2xl font-bold text-gray-800">AED <span id="we_kpiAvgAmount">0.00</span></p></div>
+                    </div>
+                    <div class="flex gap-8 border-b border-gray-200 mb-6 no-print">
+                        <button id="we_tabVisuals" onclick="switchWeTab('Visuals', this)" class="pb-3 text-sm tab-active transition-all">Month/Account Visuals</button>
+                        <button id="we_tabData" onclick="switchWeTab('Data', this)" class="pb-3 text-sm text-gray-500 hover:text-gray-800 transition-all">Detailed Database</button>
+                    </div>
+                    <div id="we_workspaceVisuals" class="space-y-6 no-print">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Total Amount by Account</h3><div class="h-64"><canvas id="we_accountChart"></canvas></div></div>
+                            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Monthly Spending Trend</h3><div class="h-64"><canvas id="we_monthTrendChart"></canvas></div></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"><h3 class="text-sm font-bold text-gray-700 mb-4">Month-wise Account Breakdown (AED)</h3><div class="h-72"><canvas id="we_stackedMonthChart"></canvas></div></div>
+                    </div>
+                    <div id="we_workspaceData" class="hidden">
+                        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div class="overflow-x-auto max-h-[600px] overflow-y-auto print-scroll-reset">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="sticky top-0 bg-gray-50 shadow-sm z-10 border-b border-gray-200"><tr><th class="p-4 text-xs font-bold text-gray-500 uppercase">Date</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Billing Month</th><th class="p-4 text-xs font-bold text-gray-500 uppercase">Account Number</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-right">Amount (AED)</th><th class="p-4 text-xs font-bold text-gray-500 uppercase text-center no-print">Action</th></tr></thead>
+                                    <tbody id="we_tableBody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> 
+        </main>
+    </div>
+
+    <!-- Global Clear Data Modal -->
+    <div id="clearDataModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full m-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Clear Data Options</h3>
+            <p class="text-sm text-gray-500 mb-6">Select which records you want to permanently delete from the system. This action cannot be undone.</p>
+            <div class="space-y-3">
+                <button onclick="confirmClear('all')" class="w-full text-left px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 font-semibold rounded-lg border border-red-200 transition flex items-center gap-3"><span class="text-lg">🗑️</span> Clear ALL Data</button>
+                <button id="btn-clear-month" onclick="confirmClear('month')" class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold rounded-lg border border-gray-200 transition flex items-center gap-3"><span class="text-lg">📅</span> <span id="lbl-clear-month">Clear Selected Month</span></button>
+                <button id="btn-clear-vehicle" onclick="confirmClear('vehicle')" class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-semibold rounded-lg border border-gray-200 transition flex items-center gap-3"><span class="text-lg">⚙️</span> <span id="lbl-clear-vehicle">Clear Filtered Entity</span></button>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeClearModal()" class="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full m-4">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Change Password</h3>
+            <div class="space-y-3">
+                <input type="password" id="adminPassword" class="w-full border border-rose-300 bg-rose-50 rounded-lg p-2.5 text-sm" placeholder="Enter Admin Auth Password">
+                <input type="password" id="oldPassword" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="Enter Old Password">
+                <input type="password" id="newPassword" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="Enter New Password">
+                <input type="password" id="confirmPassword" class="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="Confirm New Password">
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="document.getElementById('passwordModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium rounded-lg">Cancel</button>
+                <button onclick="saveNewPassword()" class="px-4 py-2 bg-rose-900 hover:bg-rose-800 text-white text-sm font-medium rounded-lg">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // Excel Data Decoding Functions
+        // ==========================================
+        function parseExcelHeader(val) {
+            if (val === undefined || val === null) return "";
+            if (typeof val === 'number' && val > 20000) {
+                return new Date(Math.round((val - 25569) * 86400 * 1000)).toLocaleString('default', { month: 'short' }).toLowerCase();
+            }
+            return String(val).toLowerCase().trim();
+        }
+
+        // ==========================================
+        // GLOBAL VARIABLES
+        // ==========================================
+        window.allSalikTrips = []; window.filteredSalikTrips = []; window.salikCharts = {};
+        window.allDarbTrips = []; window.filteredDarbTrips = []; window.darbCharts = {};
+        window.allFuelData = []; window.filteredFuelData = []; window.fuelCharts = {};
+        window.allDriverData = []; window.filteredDriverData = []; window.driverCharts = {};
+        window.allIctData = []; window.filteredIctData = []; window.ictCharts = {};
+        window.allWeData = []; window.filteredWeData = []; window.weCharts = {};
+        window.currentClearModule = '';
+
+        const MAROON_GREY_COLORS = ['#881337', '#374151', '#9f1239', '#4b5563', '#4c0519', '#1f2937', '#be123c', '#6b7280'];
+
+        // Plugin Configuration
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        
+        try {
+            Chart.register(ChartDataLabels);
+        } catch (e) {
+            console.warn("DataLabels plugin load failed. Charts will render without numbers.");
+        }
+        
+        Chart.defaults.font.family = "'Inter', sans-serif"; 
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.layout.padding = { top: 25 };
+        
+        if (Chart.defaults.plugins) {
+            Chart.defaults.plugins.datalabels = {
+                color: '#475569',
+                align: 'top',
+                anchor: 'end',
+                offset: 2,
+                font: { weight: '600', size: 10, family: "'Inter', sans-serif" },
+                formatter: (value) => value > 0 ? (value % 1 !== 0 ? value.toFixed(0) : value) : ''
+            };
+        }
+
+        // --- Core Totals Functions ---
+        function updateSalikDatabaseTotals() {
+            const dbTotalAmount = window.allSalikTrips.reduce((sum, t) => sum + t.TotalAmount, 0);
+            document.getElementById('salik_dbTotalCount').innerText = window.allSalikTrips.length;
+            document.getElementById('salik_dbTotalAmount').innerText = dbTotalAmount.toFixed(2);
+        }
+        function updateDarbDatabaseTotals() {
+            const dbTotalAmount = window.allDarbTrips.reduce((sum, t) => sum + t.TotalAmount, 0);
+            document.getElementById('darb_dbTotalCount').innerText = window.allDarbTrips.length;
+            document.getElementById('darb_dbTotalAmount').innerText = dbTotalAmount.toFixed(2);
+        }
+        function updateFuelDatabaseTotals() { 
+            document.getElementById('fuel_dbTotalCount').innerText = window.allFuelData.length; 
+        }
+        function updateDriverDatabaseTotals() { 
+            const dbTotal = window.allDriverData.reduce((sum, t) => sum + t.km, 0);
+            document.getElementById('driver_dbTotalCount').innerText = window.allDriverData.length; 
+            document.getElementById('driver_dbTotalKM').innerText = dbTotal.toFixed(0);
+        }
+        function updateIctDatabaseTotals() {
+            const dbTotal = window.allIctData.reduce((sum, t) => sum + t.amount, 0);
+            document.getElementById('ict_dbTotalCount').innerText = window.allIctData.length;
+            document.getElementById('ict_dbTotalAmount').innerText = dbTotal.toFixed(2);
+        }
+        function updateWeDatabaseTotals() {
+            const dbTotal = window.allWeData.reduce((sum, t) => sum + t.amount, 0);
+            document.getElementById('we_dbTotalCount').innerText = window.allWeData.length;
+            document.getElementById('we_dbTotalAmount').innerText = dbTotal.toFixed(2);
+        }
+
+        // --- Core Init Functions ---
+        function initSalik() {
+            try {
+                const savedSalik = localStorage.getItem('salikDataV16');
+                if (savedSalik !== null && savedSalik !== "[]") {
+                    window.allSalikTrips = JSON.parse(savedSalik);
+                    window.allSalikTrips.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allSalikTrips = []; }
+                window.filteredSalikTrips = [...window.allSalikTrips];
+                updateSalikDatabaseTotals(); populateSalikFilters(); applySalikFilters();
+            } catch (e) { console.error("Salik init err", e); window.allSalikTrips = []; }
+        }
+        function initDarb() {
+            try {
+                const savedDarb = localStorage.getItem('darbDataV5');
+                if (savedDarb !== null && savedDarb !== "[]") {
+                    window.allDarbTrips = JSON.parse(savedDarb);
+                    window.allDarbTrips.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allDarbTrips = []; }
+                window.filteredDarbTrips = [...window.allDarbTrips];
+                updateDarbDatabaseTotals(); populateDarbFilters(); applyDarbFilters();
+            } catch (e) { console.error("Darb init err", e); window.allDarbTrips = []; }
+        }
+        function initFuel() {
+            try {
+                const savedData = localStorage.getItem('fuelDashboardV10');
+                if (savedData && savedData !== "[]") {
+                    window.allFuelData = JSON.parse(savedData);
+                    window.allFuelData.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allFuelData = []; }
+                window.allFuelData.sort((a, b) => a.dateObj - b.dateObj);
+                window.filteredFuelData = [...window.allFuelData];
+                updateFuelDatabaseTotals(); populateFuelFilters(); applyFuelFilters();
+            } catch (e) { console.error("Fuel init err", e); window.allFuelData = []; }
+        }
+        function initDriver() {
+            try {
+                const savedData = localStorage.getItem('driverDashboardV4');
+                if (savedData && savedData !== "[]") {
+                    window.allDriverData = JSON.parse(savedData);
+                    window.allDriverData.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allDriverData = []; }
+                window.allDriverData.sort((a, b) => a.dateObj - b.dateObj);
+                window.filteredDriverData = [...window.allDriverData];
+                updateDriverDatabaseTotals(); populateDriverFilters(); applyDriverFilters();
+            } catch (e) { console.error("Driver init err", e); window.allDriverData = []; }
+        }
+        function initIct() {
+            try {
+                const savedData = localStorage.getItem('ictDashboardV1');
+                if (savedData && savedData !== "[]") {
+                    window.allIctData = JSON.parse(savedData);
+                    window.allIctData.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allIctData = []; }
+                window.allIctData.sort((a, b) => a.dateObj - b.dateObj);
+                window.filteredIctData = [...window.allIctData];
+                updateIctDatabaseTotals(); populateIctFilters(); applyIctFilters();
+            } catch (e) { console.error("ICT init err", e); window.allIctData = []; }
+        }
+        function initWe() {
+            try {
+                const savedData = localStorage.getItem('weDashboardV1');
+                if (savedData && savedData !== "[]") {
+                    window.allWeData = JSON.parse(savedData);
+                    window.allWeData.forEach(t => t.dateObj = new Date(t.dateObj)); 
+                } else { window.allWeData = []; }
+                window.allWeData.sort((a, b) => a.dateObj - b.dateObj);
+                window.filteredWeData = [...window.allWeData];
+                updateWeDatabaseTotals(); populateWeFilters(); applyWeFilters();
+            } catch (e) { console.error("WE init err", e); window.allWeData = []; }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSalik(); initDarb(); initFuel(); initDriver(); initIct(); initWe();
+        });
+
+        // --- Navigation Switcher ---
+        window.switchAppModule = function(moduleName) {
+            ['salik', 'darb', 'fuel', 'driver', 'ict', 'we'].forEach(m => {
+                const el = document.getElementById(`module-${m}`);
+                const nav = document.getElementById(`nav-${m}`);
+                if(el) el.classList.add('hidden');
+                if(nav) nav.classList.remove('sidebar-active', 'bg-gray-800', 'text-white');
+            });
+            
+            const targetMod = document.getElementById(`module-${moduleName}`);
+            const targetNav = document.getElementById(`nav-${moduleName}`);
+            if(targetMod) targetMod.classList.remove('hidden');
+            if(targetNav) targetNav.classList.add('sidebar-active', 'bg-gray-800', 'text-white');
+            
+            setTimeout(() => {
+                if(moduleName === 'salik') updateSalikDashboard();
+                if(moduleName === 'darb') updateDarbDashboard();
+                if(moduleName === 'fuel') updateFuelUI();
+                if(moduleName === 'driver') updateDriverUI();
+                if(moduleName === 'ict') updateIctUI();
+                if(moduleName === 'we') updateWeUI();
+            }, 50);
+        };
+
+        // --- CLEAR DATA MODAL LOGIC ---
+        window.openClearModal = function(module) {
+            window.currentClearModule = module;
+            let filterId = ['ict', 'we'].includes(module) ? 'Account' : 'Vehicle'; 
+            
+            const mElem = document.getElementById(`${module}_filterMonth`);
+            const eElem = document.getElementById(`${module}_filter${filterId}`);
+            
+            const monthSel = mElem ? mElem.value : 'all';
+            const entitySel = eElem ? eElem.value : 'all';
+
+            const btnMonth = document.getElementById('btn-clear-month');
+            const lblMonth = document.getElementById('lbl-clear-month');
+            if (monthSel === 'all') {
+                btnMonth.classList.add('opacity-50', 'cursor-not-allowed'); btnMonth.disabled = true;
+                lblMonth.innerHTML = `Clear Month <span class="text-xs text-gray-400 font-normal">(Select a month first)</span>`;
+            } else {
+                btnMonth.classList.remove('opacity-50', 'cursor-not-allowed'); btnMonth.disabled = false;
+                lblMonth.innerHTML = `Clear Month: <b class="text-gray-900">${monthSel}</b>`;
+            }
+
+            const btnVeh = document.getElementById('btn-clear-vehicle');
+            const lblVeh = document.getElementById('lbl-clear-vehicle');
+            if (entitySel === 'all') {
+                btnVeh.classList.add('opacity-50', 'cursor-not-allowed'); btnVeh.disabled = true;
+                lblVeh.innerHTML = `Clear Filtered Entity <span class="text-xs text-gray-400 font-normal">(Select an entity first)</span>`;
+            } else {
+                btnVeh.classList.remove('opacity-50', 'cursor-not-allowed'); btnVeh.disabled = false;
+                lblVeh.innerHTML = `Clear Filtered Entity: <b class="text-gray-900">${entitySel}</b>`;
+            }
+
+            document.getElementById('clearDataModal').classList.remove('hidden');
+        };
+
+        window.closeClearModal = function() { document.getElementById('clearDataModal').classList.add('hidden'); };
+
+        window.confirmClear = function(type) {
+            try {
+                const pw = prompt("This action is destructive and permanent.\n\nPlease enter the authorization password to proceed:");
+                if (pw === null) { 
+                    closeClearModal(); 
+                    return; 
+                }
+                
+                const storedPass = localStorage.getItem('mncAdminPassword');
+                if (pw !== storedPass) {
+                    alert("Incorrect password. Request denied.");
+                    closeClearModal();
+                    return;
+                }
+
+                if (!confirm("Password accepted. Are you absolutely sure you want to permanently delete this data?")) {
+                    closeClearModal();
+                    return;
+                }
+
+                const mod = window.currentClearModule;
+                const filterId = ['ict', 'we'].includes(mod) ? 'Account' : 'Vehicle'; 
+                const mElem = document.getElementById(`${mod}_filterMonth`);
+                const eElem = document.getElementById(`${mod}_filter${filterId}`);
+                const monthSel = mElem ? mElem.value : 'all';
+                const entitySel = eElem ? eElem.value : 'all';
+
+                if (mod === 'salik') {
+                    if (type === 'all') window.allSalikTrips = [];
+                    if (type === 'month') window.allSalikTrips = window.allSalikTrips.filter(t => t.MonthStr !== monthSel);
+                    if (type === 'vehicle') window.allSalikTrips = window.allSalikTrips.filter(t => t.Vehicle !== entitySel);
+                    localStorage.setItem('salikDataV16', JSON.stringify(window.allSalikTrips));
+                    updateSalikDatabaseTotals(); populateSalikFilters(); applySalikFilters();
+                }
+                else if (mod === 'darb') {
+                    if (type === 'all') window.allDarbTrips = [];
+                    if (type === 'month') window.allDarbTrips = window.allDarbTrips.filter(t => t.MonthStr !== monthSel);
+                    if (type === 'vehicle') window.allDarbTrips = window.allDarbTrips.filter(t => t.Vehicle !== entitySel);
+                    localStorage.setItem('darbDataV5', JSON.stringify(window.allDarbTrips));
+                    updateDarbDatabaseTotals(); populateDarbFilters(); applyDarbFilters();
+                }
+                else if (mod === 'fuel') {
+                    if (type === 'all') window.allFuelData = [];
+                    if (type === 'month') window.allFuelData = window.allFuelData.filter(t => t.monthStr !== monthSel);
+                    if (type === 'vehicle') window.allFuelData = window.allFuelData.filter(t => t.vehicle !== entitySel);
+                    localStorage.setItem('fuelDashboardV10', JSON.stringify(window.allFuelData));
+                    updateFuelDatabaseTotals(); populateFuelFilters(); applyFuelFilters();
+                }
+                else if (mod === 'driver') {
+                    if (type === 'all') window.allDriverData = [];
+                    if (type === 'month') window.allDriverData = window.allDriverData.filter(t => t.monthStr !== monthSel);
+                    if (type === 'vehicle') window.allDriverData = window.allDriverData.filter(t => t.vehicle !== entitySel);
+                    localStorage.setItem('driverDashboardV4', JSON.stringify(window.allDriverData));
+                    updateDriverDatabaseTotals(); populateDriverFilters(); applyDriverFilters();
+                }
+                else if (mod === 'ict') {
+                    if (type === 'all') window.allIctData = [];
+                    if (type === 'month') window.allIctData = window.allIctData.filter(t => t.monthStr !== monthSel);
+                    if (type === 'vehicle') window.allIctData = window.allIctData.filter(t => t.account !== entitySel);
+                    localStorage.setItem('ictDashboardV1', JSON.stringify(window.allIctData));
+                    updateIctDatabaseTotals(); populateIctFilters(); applyIctFilters();
+                }
+                else if (mod === 'we') {
+                    if (type === 'all') window.allWeData = [];
+                    if (type === 'month') window.allWeData = window.allWeData.filter(t => t.monthStr !== monthSel);
+                    if (type === 'vehicle') window.allWeData = window.allWeData.filter(t => t.account !== entitySel);
+                    localStorage.setItem('weDashboardV1', JSON.stringify(window.allWeData));
+                    updateWeDatabaseTotals(); populateWeFilters(); applyWeFilters();
+                }
+
+                closeClearModal();
+                alert('Requested data has been cleared successfully.');
+            } catch (e) {
+                alert('An error occurred: ' + e.message);
+                console.error(e);
+                closeClearModal();
+            }
+        };
+
+        // ==========================================
+        // 1. SALIK LOGIC (DUBAI) 
+        // ==========================================
+        window.deleteSalikRow = function(txId) {
+            if(confirm(`Delete Salik Transaction ID: ${txId}?`)) {
+                window.allSalikTrips = window.allSalikTrips.filter(t => t.TxId !== String(txId));
+                localStorage.setItem('salikDataV16', JSON.stringify(window.allSalikTrips));
+                updateSalikDatabaseTotals(); populateSalikFilters(); applySalikFilters();
+            }
+        };
+
+        document.getElementById('salik_pdfUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const isExcel = file.name.endsWith('.xls') || file.name.endsWith('.xlsx') || file.name.endsWith('.csv');
+
+            if (!isExcel) {
+                const reader = new FileReader();
+                reader.onload = async function() {
+                    try {
+                        const pdf = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise; 
+                        let text = "";
+                        for (let i = 1; i <= pdf.numPages; i++) { 
+                            const p = await pdf.getPage(i); const c = await p.getTextContent(); 
+                            text += c.items.map(it => it.str).join(" ") + " "; 
+                        }
+                        parseSalikPdfData(text);
+                    } catch (err) { alert('Error reading Salik PDF: ' + err.message); }
+                }; reader.readAsArrayBuffer(file); 
+            } else {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        
+                        let newTrips = [], duplicateCount = 0, noVehicleCount = 0;
+                        
+                        rawJson.forEach(row => {
+                            const keys = Object.keys(row);
+                            const getVal = (possibleNames) => { const k = keys.find(k => possibleNames.some(n => String(k).toLowerCase().includes(n.toLowerCase()))); return k ? row[k] : null; };
+                            
+                            const txIdRaw = getVal(['Transaction ID', 'TxId', 'Transaction', 'Reference']);
+                            if (!txIdRaw || String(txIdRaw).trim() === '') {
+                                return; // Strict requirement for Reference number Duplicate Check
+                            }
+                            const txId = String(txIdRaw).trim();
+                            
+                            if (txId.toLowerCase().includes("without vehicle") || txId.toLowerCase().includes("total")) {
+                                noVehicleCount++; return;
+                            }
+                            
+                            const plate = getVal(['Vehicle Plate', 'Plate', 'Tag', 'Vehicle']);
+                            if (!plate || String(plate).trim() === '' || String(plate).toLowerCase().includes('without') || String(plate).toLowerCase().includes('unknown')) { 
+                                noVehicleCount++; 
+                                return; 
+                            }
+                            
+                            const dateStrRaw = getVal(['Transaction Date', 'Trip Date', 'Date']);
+                            const timeStrRaw = getVal(['Transaction Time', 'Trip Time', 'Time']);
+                            
+                            let dateObj;
+                            if (typeof dateStrRaw === 'number') {
+                                // Excel Date
+                                let rawTime = typeof timeStrRaw === 'number' ? timeStrRaw : 0;
+                                dateObj = new Date(Math.round((dateStrRaw + rawTime - 25569) * 86400 * 1000));
+                            } else {
+                                // String date/time
+                                let dtString = String(dateStrRaw);
+                                if (timeStrRaw && String(timeStrRaw).trim() !== '') {
+                                    dtString += " " + String(timeStrRaw);
+                                }
+                                dateObj = new Date(dtString);
+                            }
+                            if(isNaN(dateObj)) return;
+                            
+                            const gate = getVal(['Toll Gate', 'Gate', 'Direction']) || 'Unknown Gate';
+                            
+                            // STRICT DUPLICATE CHECK AGAINST REFERENCE NUMBER ONLY
+                            const isDuplicate = window.allSalikTrips.some(t => t.TxId === txId);
+
+                            if (isDuplicate) { duplicateCount++; return; }
+                            
+                            const amount = parseFloat(getVal(['Total Amount', 'Amount', 'Charged Amount'])) || 4.20;
+                            
+                            newTrips.push({ 
+                                TxId: txId, 
+                                dateObj: dateObj, 
+                                DateStr: dateObj.toLocaleDateString('en-GB') + " " + dateObj.toLocaleTimeString('en-US'), 
+                                MonthStr: dateObj.toLocaleString('default', { month: 'long', year: 'numeric' }), 
+                                Gate: gate, 
+                                Vehicle: String(plate).trim(), 
+                                TotalAmount: amount 
+                            });
+                        });
+                        
+                        if (newTrips.length > 0) {
+                            window.allSalikTrips = [...window.allSalikTrips, ...newTrips].sort((a, b) => a.dateObj - b.dateObj);
+                            localStorage.setItem('salikDataV16', JSON.stringify(window.allSalikTrips));
+                            updateSalikDatabaseTotals(); populateSalikFilters(); applySalikFilters();
+                            alert(`✅ Successfully added ${newTrips.length} Salik records!\n(Skipped ${noVehicleCount} 'without vehicle'/total entries).`);
+                        } else { 
+                            alert(duplicateCount > 0 ? `⚠️ Duplicate Warning: All valid records already exist.` : `No valid Salik records found.`); 
+                        }
+                    } catch (err) { alert('Error parsing Salik Excel file.'); console.error(err); }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+            e.target.value = ''; 
+        });
+
+        function parseSalikPdfData(text) {
+            const cleanText = text.replace(/\s+/g, " ");
+            const segments = cleanText.split(/(?=\b\d{11}\b)/);
+            let newTrips = [], duplicateCount = 0, noVehicleCount = 0;
+            const TOLL_GATES = ["Jebel Ali Toll Gate", "Al Barsha", "Al Safa South", "Al Safa North", "Business Bay Crossing", "Al Garhoud New Bridge", "Al Mamzar North", "Al Mamzar South", "Al Maktoum Bridge", "Airport Tunnel"];
+            
+            segments.forEach(seg => {
+                const idMatch = seg.match(/^(\d{11})\b/); 
+                if (!idMatch) return;
+                
+                const txId = idMatch[1];
+                
+                if (seg.toLowerCase().includes("without vehicle") || seg.toLowerCase().includes("total")) { 
+                    noVehicleCount++; 
+                    return; 
+                }
+                
+                // Get the Transaction Date WITH TIME (e.g. 18 Sep 2026 10:43:45 PM)
+                const tripDateMatch = seg.match(/\b\d{2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s+\d{2}:\d{2}:\d{2}\s+(?:AM|PM)\b/i); 
+                if(!tripDateMatch) return;
+                const dateObj = new Date(tripDateMatch[0]);
+                
+                let gate = "Unknown Gate"; 
+                for (let g of TOLL_GATES) { 
+                    if (seg.toLowerCase().includes(g.toLowerCase())) { gate = g; break; } 
+                }
+                
+                let plate = "";
+                const allPlates = seg.match(/\b\d{4,5}\b/g) || [];
+                const filteredPlates = allPlates.filter(p => !['2024','2025','2026','2027'].includes(p) && p !== txId.substring(0,5));
+                if (filteredPlates.length > 0) {
+                    plate = filteredPlates[filteredPlates.length - 1]; 
+                } 
+                
+                if (!plate || plate.trim() === "") { 
+                    noVehicleCount++; 
+                    return; 
+                }
+                
+                // STRICT DUPLICATE CHECK AGAINST REFERENCE NUMBER ONLY
+                const isDuplicate = window.allSalikTrips.some(t => t.TxId === txId);
+
+                if (isDuplicate) { 
+                    duplicateCount++; 
+                    return; 
+                }
+                
+                // Find all amounts and select the last one to capture Total Amount Incl VAT correctly
+                const amMatches = seg.match(/\b\d+\.\d{2}\b/g);
+                let amount = 4.00;
+                if (amMatches && amMatches.length > 0) {
+                    amount = parseFloat(amMatches[amMatches.length - 1]);
+                }
+                
+                newTrips.push({ 
+                    TxId: txId, 
+                    dateObj: dateObj, 
+                    DateStr: dateObj.toLocaleDateString('en-GB') + " " + dateObj.toLocaleTimeString('en-US'), 
+                    MonthStr: dateObj.toLocaleString('default', { month: 'long', year: 'numeric' }), 
+                    Gate: gate, 
+                    Vehicle: plate, 
+                    TotalAmount: amount 
+                });
+            });
+
+            if (newTrips.length > 0) {
+                window.allSalikTrips = [...window.allSalikTrips, ...newTrips].sort((a, b) => a.dateObj - b.dateObj);
+                localStorage.setItem('salikDataV16', JSON.stringify(window.allSalikTrips));
+                updateSalikDatabaseTotals(); populateSalikFilters(); applySalikFilters();
+                alert(`✅ Successfully added ${newTrips.length} Salik records!\n(Skipped ${noVehicleCount} 'without vehicle'/total entries).`);
+            } else { alert(duplicateCount > 0 ? `⚠️ Duplicate Warning: All valid records already exist.` : `No valid Salik records found.`); }
+        }
+
+        function populateSalikFilters() {
+            const months = [...new Set(window.allSalikTrips.map(t => t.MonthStr))].sort((a, b) => new Date(a) - new Date(b));
+            const vehicles = [...new Set(window.allSalikTrips.map(t => t.Vehicle))].sort();
+            const monthSelect = document.getElementById('salik_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            const vehicleSelect = document.getElementById('salik_filterVehicle');
+            vehicleSelect.innerHTML = '<option value="all">All Vehicles</option>';
+            vehicles.forEach(v => vehicleSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['salik_filterStart', 'salik_filterEnd', 'salik_filterMonth', 'salik_filterVehicle'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applySalikFilters);
+        });
+
+        function applySalikFilters() {
+            const startDateStr = document.getElementById('salik_filterStart').value;
+            const endDateStr = document.getElementById('salik_filterEnd').value;
+            const month = document.getElementById('salik_filterMonth').value;
+            const vehicle = document.getElementById('salik_filterVehicle').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredSalikTrips = window.allSalikTrips.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.MonthStr === month);
+                if (vehicle !== 'all') valid = valid && (t.Vehicle === vehicle);
+                return valid;
+            });
+            updateSalikDashboard();
+        }
+
+        function updateSalikDashboard() {
+            const totalAmount = window.filteredSalikTrips.reduce((sum, t) => sum + t.TotalAmount, 0);
+            document.getElementById('salik_kpiTransactions').innerText = window.filteredSalikTrips.length;
+            document.getElementById('salik_kpiTotalAmount').innerText = totalAmount.toFixed(2);
+            document.getElementById('salik_kpiAvgAmount').innerText = (window.filteredSalikTrips.length > 0 ? (totalAmount / window.filteredSalikTrips.length) : 0).toFixed(2);
+            document.getElementById('salik_kpiGates').innerText = new Set(window.filteredSalikTrips.map(t => t.Gate)).size;
+
+            renderSalikTable();
+            renderSalikCharts();
+        }
+
+        function renderSalikTable() {
+            const tbody = document.getElementById('salik_tableBody'); tbody.innerHTML = '';
+            if(window.filteredSalikTrips.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">No records found.</td></tr>`;
+                return;
+            }
+            window.filteredSalikTrips.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-xs text-gray-500">${t.TxId}</td>
+                    <td class="p-4">${t.DateStr}</td><td class="p-4">${t.Gate}</td>
+                    <td class="p-4 font-medium text-gray-800">${t.Vehicle}</td>
+                    <td class="p-4 font-bold text-gray-700 text-right">${t.TotalAmount.toFixed(2)}</td>
+                    <td class="p-4 text-center no-print">
+                        <button onclick="deleteSalikRow('${t.TxId}')" class="text-gray-400 hover:text-red-500">❌</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSalikCharts() {
+            const vehicleGroups = {}, monthGroups = {}, monthCounts = {};
+            
+            window.filteredSalikTrips.forEach(t => {
+                vehicleGroups[t.Vehicle] = (vehicleGroups[t.Vehicle] || 0) + t.TotalAmount;
+                const my = t.dateObj.toLocaleString('default', { month: 'short', year: '2-digit' });
+                monthGroups[my] = (monthGroups[my] || 0) + t.TotalAmount;
+                monthCounts[my] = (monthCounts[my] || 0) + 1;
+            });
+
+            if(window.salikCharts['vehicleAmountChart']) window.salikCharts['vehicleAmountChart'].destroy();
+            window.salikCharts['vehicleAmountChart'] = new Chart(document.getElementById('salik_vehicleAmountChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(vehicleGroups), datasets: [{ label: 'Amount (AED)', data: Object.values(vehicleGroups), backgroundColor: MAROON_GREY_COLORS, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const sortedV = Object.keys(vehicleGroups).sort((a, b) => vehicleGroups[b] - vehicleGroups[a]);
+            if(window.salikCharts['vehicleTrendChart']) window.salikCharts['vehicleTrendChart'].destroy();
+            window.salikCharts['vehicleTrendChart'] = new Chart(document.getElementById('salik_vehicleTrendChart'), {
+                type: 'bar',
+                data: { labels: sortedV, datasets: [{ label: 'Amount (AED)', data: sortedV.map(v => vehicleGroups[v]), backgroundColor: MAROON_GREY_COLORS, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border: { display: false } }, x: { grid: { display: false }, border: { display: false } } }, plugins: { legend: { display: false } } }
+            });
+
+            if(window.salikCharts['monthlyCountChart']) window.salikCharts['monthlyCountChart'].destroy();
+            window.salikCharts['monthlyCountChart'] = new Chart(document.getElementById('salik_monthlyCountChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(monthCounts), datasets: [{ label: 'Transactions', data: Object.values(monthCounts), backgroundColor: '#374151', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            if(window.salikCharts['monthlySpendChart']) window.salikCharts['monthlySpendChart'].destroy();
+            window.salikCharts['monthlySpendChart'] = new Chart(document.getElementById('salik_monthlySpendChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(monthGroups), datasets: [{ label: 'Amount (AED)', data: Object.values(monthGroups), backgroundColor: '#881337', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+        }
+
+        window.switchSalikTab = function(tab, el) {
+            document.querySelectorAll('#module-salik [id^="salik_tab"]').forEach(e => {
+                e.classList.remove('tab-active'); e.classList.add('text-gray-500');
+            });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('salik_workspaceOverview').classList.toggle('hidden', tab !== 'Overview');
+            document.getElementById('salik_workspaceDetails').classList.toggle('hidden', tab !== 'Details');
+        };
+
+        document.getElementById('salik_exportBtn').addEventListener('click', () => {
+            if (window.filteredSalikTrips.length === 0) return alert("No data to export");
+            const exportData = window.filteredSalikTrips.map(t => ({ "Transaction ID": t.TxId, "Transaction Date": t.DateStr, "Toll Gate": t.Gate, "Vehicle Plate": t.Vehicle, "Amount (AED)": t.TotalAmount }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Salik_Trips"); XLSX.writeFile(wb, "Salik_Report.xlsx");
+        });
+
+        // ==========================================
+        // 2. DARB LOGIC (ABU DHABI)
+        // ==========================================
+        window.deleteDarbRow = function(txId) {
+            if(confirm(`Delete DARB Transaction UUID: ${txId}?`)) {
+                window.allDarbTrips = window.allDarbTrips.filter(t => t.TxId !== String(txId));
+                localStorage.setItem('darbDataV5', JSON.stringify(window.allDarbTrips));
+                updateDarbDatabaseTotals(); populateDarbFilters(); applyDarbFilters();
+            }
+        };
+
+        document.getElementById('darb_pdfUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const pdf = await pdfjsLib.getDocument(new Uint8Array(this.result)).promise; 
+                    let text = "";
+                    for (let i = 1; i <= pdf.numPages; i++) { 
+                        const p = await pdf.getPage(i); const c = await p.getTextContent(); 
+                        text += c.items.map(it => it.str).join(" ") + " "; 
+                    }
+                    parseDarbPdfReport(text);
+                } catch (err) { alert('Error reading DARB PDF: ' + err.message); }
+            }; reader.readAsArrayBuffer(file); e.target.value = ''; 
+        });
+
+        function parseDarbPdfReport(text) {
+            const cleanText = text.replace(/\s+/g, " ").replace(/\s*-\s*/g, "-");
+            // Split regex updated to support both UUID formats and 9-digit reference numbers
+            const segments = cleanText.split(/(?=[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|\b\d{9}\b)/i);
+            let newTrips = [], duplicateCount = 0;
+            const DARB_GATES = ["Ghantout Exit Gate", "Ghantout Entry Gate", "Ghantout", "Sas Al Nakhl Entry Gate", "Sas Al Nakhl Exit Gate", "Sas Al Nakhl", "Sheikh Zayed Bridge", "Sheikh Khalifa Bridge", "Al Maqta Bridge", "Mussafah Bridge"];
+
+            segments.forEach(seg => {
+                // Extract Reference Number (UUID or 9-digit ID)
+                const txMatch = seg.match(/^([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|\d{9})/i);
+                if (!txMatch) return;
+                const txId = txMatch[1].toLowerCase();
+
+                // Extract Dates: Financial Date comes first, Transaction Date comes second
+                const dateMatches = seg.match(/\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}:\d{2}\s+(?:AM|PM)/gi);
+                if (!dateMatches || dateMatches.length === 0) return;
+                
+                // Strictly use Transaction Date (index 1) if available, otherwise fallback to index 0
+                const dateRaw = dateMatches.length > 1 ? dateMatches[1] : dateMatches[0]; 
+                const dateObj = new Date(dateRaw);
+                if (isNaN(dateObj)) return;
+
+                // Extract Vehicle Number
+                let plateMatch = seg.match(/\b\d{1,2}-\d{4,6}\b/);
+                let vehicle = plateMatch ? plateMatch[0] : "";
+                
+                // STRICTLY DO NOT CONSIDER WITHOUT VEHICLE OR UNKNOWN
+                if (!vehicle || vehicle.toLowerCase() === "unknown" || seg.toLowerCase().includes("without vehicle") || vehicle.trim() === "") {
+                    return;
+                }
+
+                // Determine Gate
+                let gate = "Unknown DARB Gate";
+                let segNoSpaces = seg.toLowerCase().replace(/\s/g, '');
+                for (let g of DARB_GATES) { 
+                    if (segNoSpaces.includes(g.toLowerCase().replace(/\s/g, ''))) { gate = g; break; } 
+                }
+
+                // Duplicate Check: Strictly against Reference Number (TxId) only
+                const isDuplicate = window.allDarbTrips.some(t => t.TxId === txId);
+
+                if (isDuplicate) { 
+                    duplicateCount++; 
+                    return; 
+                }
+
+                // Extract Amount
+                let amtMatch = seg.match(/(\d+(?:\.\d+)?)\s*AED/i);
+                let amount = amtMatch ? parseFloat(amtMatch[1]) : 4.0;
+
+                newTrips.push({ 
+                    TxId: txId, 
+                    dateObj: dateObj, 
+                    DateStr: dateObj.toLocaleDateString('en-GB') + " " + dateObj.toLocaleTimeString('en-US'), 
+                    MonthStr: dateObj.toLocaleString('default', { month: 'long', year: 'numeric' }), 
+                    Gate: gate, 
+                    Vehicle: vehicle, 
+                    TotalAmount: amount 
+                });
+            });
+
+            if (newTrips.length > 0) {
+                window.allDarbTrips = [...window.allDarbTrips, ...newTrips].sort((a, b) => a.dateObj - b.dateObj);
+                localStorage.setItem('darbDataV5', JSON.stringify(window.allDarbTrips));
+                updateDarbDatabaseTotals(); populateDarbFilters(); applyDarbFilters();
+                alert(`✅ Successfully added ${newTrips.length} new DARB records!${duplicateCount > 0 ? `\n(Skipped ${duplicateCount} duplicate transactions).` : ''}`);
+            } else { 
+                alert(duplicateCount > 0 ? `⚠️ Duplicate Warning: All ${duplicateCount} records already exist.` : `No valid DARB records found.`); 
+            }
+        }
+
+        function populateDarbFilters() {
+            const months = [...new Set(window.allDarbTrips.map(t => t.MonthStr))].sort((a, b) => new Date(a) - new Date(b));
+            const vehicles = [...new Set(window.allDarbTrips.map(t => t.Vehicle))].sort();
+            const monthSelect = document.getElementById('darb_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            const vehicleSelect = document.getElementById('darb_filterVehicle');
+            vehicleSelect.innerHTML = '<option value="all">All Vehicles</option>';
+            vehicles.forEach(v => vehicleSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['darb_filterStart', 'darb_filterEnd', 'darb_filterMonth', 'darb_filterVehicle'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applyDarbFilters);
+        });
+
+        function applyDarbFilters() {
+            const startDateStr = document.getElementById('darb_filterStart').value;
+            const endDateStr = document.getElementById('darb_filterEnd').value;
+            const month = document.getElementById('darb_filterMonth').value;
+            const vehicle = document.getElementById('darb_filterVehicle').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredDarbTrips = window.allDarbTrips.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.MonthStr === month);
+                if (vehicle !== 'all') valid = valid && (t.Vehicle === vehicle);
+                return valid;
+            });
+            updateDarbDashboard();
+        }
+
+        function updateDarbDashboard() {
+            const totalAmount = window.filteredDarbTrips.reduce((sum, t) => sum + t.TotalAmount, 0);
+            document.getElementById('darb_kpiTransactions').innerText = window.filteredDarbTrips.length;
+            document.getElementById('darb_kpiTotalAmount').innerText = totalAmount.toFixed(2);
+            document.getElementById('darb_kpiAvgAmount').innerText = (window.filteredDarbTrips.length > 0 ? (totalAmount / window.filteredDarbTrips.length) : 0).toFixed(2);
+            document.getElementById('darb_kpiGates').innerText = new Set(window.filteredDarbTrips.map(t => t.Gate)).size;
+
+            renderDarbTable();
+            renderDarbCharts();
+        }
+
+        function renderDarbTable() {
+            const tbody = document.getElementById('darb_tableBody'); tbody.innerHTML = '';
+            if(window.filteredDarbTrips.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">No records found.</td></tr>`;
+                return;
+            }
+            window.filteredDarbTrips.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-xs text-rose-900 max-w-[200px] truncate" title="${t.TxId}">${t.TxId}</td>
+                    <td class="p-4 text-gray-600">${t.DateStr}</td>
+                    <td class="p-4 font-medium text-gray-700">${t.Gate}</td>
+                    <td class="p-4 font-bold text-gray-800">${t.Vehicle}</td>
+                    <td class="p-4 font-bold text-rose-900 text-right">${t.TotalAmount.toFixed(2)}</td>
+                    <td class="p-4 text-center no-print">
+                        <button onclick="deleteDarbRow('${t.TxId}')" class="text-gray-400 hover:text-red-500">❌</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderDarbCharts() {
+            const vehicleGroups = {}, monthGroups = {}, monthCounts = {};
+            
+            window.filteredDarbTrips.forEach(t => {
+                vehicleGroups[t.Vehicle] = (vehicleGroups[t.Vehicle] || 0) + t.TotalAmount;
+                const my = t.dateObj.toLocaleString('default', { month: 'short', year: '2-digit' });
+                monthGroups[my] = (monthGroups[my] || 0) + t.TotalAmount;
+                monthCounts[my] = (monthCounts[my] || 0) + 1;
+            });
+
+            if(window.darbCharts['vehicleAmountChart']) window.darbCharts['vehicleAmountChart'].destroy();
+            window.darbCharts['vehicleAmountChart'] = new Chart(document.getElementById('darb_vehicleAmountChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(vehicleGroups), datasets: [{ label: 'Amount (AED)', data: Object.values(vehicleGroups), backgroundColor: MAROON_GREY_COLORS, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const sortedV = Object.keys(vehicleGroups).sort((a, b) => vehicleGroups[b] - vehicleGroups[a]);
+            if(window.darbCharts['vehicleTrendChart']) window.darbCharts['vehicleTrendChart'].destroy();
+            window.darbCharts['vehicleTrendChart'] = new Chart(document.getElementById('darb_vehicleTrendChart'), {
+                type: 'bar',
+                data: { labels: sortedV, datasets: [{ label: 'Amount (AED)', data: sortedV.map(v => vehicleGroups[v]), backgroundColor: MAROON_GREY_COLORS, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border: { display: false } }, x: { grid: { display: false }, border: { display: false } } }, plugins: { legend: { display: false } } }
+            });
+
+            if(window.darbCharts['monthlyCountChart']) window.darbCharts['monthlyCountChart'].destroy();
+            window.darbCharts['monthlyCountChart'] = new Chart(document.getElementById('darb_monthlyCountChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(monthCounts), datasets: [{ label: 'Transactions', data: Object.values(monthCounts), backgroundColor: '#374151', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            if(window.darbCharts['monthlySpendChart']) window.darbCharts['monthlySpendChart'].destroy();
+            window.darbCharts['monthlySpendChart'] = new Chart(document.getElementById('darb_monthlySpendChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(monthGroups), datasets: [{ label: 'Amount (AED)', data: Object.values(monthGroups), backgroundColor: '#881337', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+        }
+
+        window.switchDarbTab = function(tab, el) {
+            document.querySelectorAll('#module-darb [id^="darb_tab"]').forEach(e => {
+                e.classList.remove('tab-active'); e.classList.add('text-gray-500');
+            });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('darb_workspaceOverview').classList.toggle('hidden', tab !== 'Overview');
+            document.getElementById('darb_workspaceDetails').classList.toggle('hidden', tab !== 'Details');
+        };
+
+        document.getElementById('darb_exportBtn').addEventListener('click', () => {
+            if (window.filteredDarbTrips.length === 0) return alert("No data to export");
+            const exportData = window.filteredDarbTrips.map(t => ({ "Reference Number": t.TxId, "Trip Date": t.DateStr, "Toll Gate": t.Vehicle, "Amount (AED)": t.TotalAmount }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "DARB_Trips"); XLSX.writeFile(wb, "DARB_Report.xlsx");
+        });
+
+        // ==========================================
+        // 3. FUEL LOGIC
+        // ==========================================
+        document.getElementById('fuel_excelUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    let headerRowIndex = -1;
+                    
+                    for (let i = 0; i < Math.min(rawArray.length, 30); i++) {
+                        const rowStr = rawArray[i].join(" ").toLowerCase();
+                        if ((rowStr.includes('vat invoice') || rowStr.includes('invoice number')) && (rowStr.includes('token name') || rowStr.includes('vehicle'))) { headerRowIndex = i; break; }
+                    }
+                    if (headerRowIndex === -1) { alert("Error: Could not locate ADNOC column headers in the file."); return; }
+                    const rawJson = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex, defval: "" });
+                    let newCount = 0, dupCount = 0;
+                    const existingIds = new Set(window.allFuelData.map(t => String(t.invoiceId).trim()));
+
+                    rawJson.forEach(row => {
+                        const normalizedRow = {};
+                        for (let key in row) normalizedRow[String(key).trim().toLowerCase()] = row[key];
+                        const invoice = normalizedRow['vat invoice number'] || normalizedRow['invoice number'] || normalizedRow['invoice'];
+                        const vehicle = normalizedRow['token name'] || normalizedRow['vehicle plate'] || normalizedRow['vehicle'];
+                        const dateStrRaw = normalizedRow['transaction date'] || normalizedRow['date'];
+                        if(!invoice || !vehicle || !dateStrRaw) return;
+                        if (existingIds.has(String(invoice).trim())) { dupCount++; return; }
+
+                        let dateObj;
+                        if (typeof dateStrRaw === 'number') dateObj = new Date(Math.round((dateStrRaw - 25569) * 86400 * 1000));
+                        else {
+                            let s = String(dateStrRaw).trim(); dateObj = new Date(s);
+                            if (isNaN(dateObj) && s.includes(" ")) dateObj = new Date(s.replace(" ", "T"));
+                        }
+                        if(isNaN(dateObj)) return; 
+
+                        const rawAmt = normalizedRow['charged amount (aed)'] || normalizedRow['transaction amount (aed)'] || normalizedRow['amount (aed)'] || 0;
+                        const rawQty = normalizedRow['product quantity (ltr)'] || normalizedRow['volume'] || 0;
+                        const amount = parseFloat(String(rawAmt).replace(/[^0-9.-]+/g,""));
+                        const qty = parseFloat(String(rawQty).replace(/[^0-9.-]+/g,""));
+
+                        window.allFuelData.push({ invoiceId: String(invoice).trim(), vehicle: String(vehicle).trim(), dateObj: dateObj, dateStr: dateObj.toLocaleDateString('en-GB'), monthStr: dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }), dayStr: String(dateObj.getDate()).padStart(2, '0'), station: normalizedRow['station name'] || normalizedRow['station'] || 'Unknown', amount: isNaN(amount) ? 0 : amount, qty: isNaN(qty) ? 0 : qty });
+                        existingIds.add(String(invoice).trim()); newCount++;
+                    });
+                    if (newCount > 0) {
+                        window.allFuelData.sort((a, b) => a.dateObj - b.dateObj); localStorage.setItem('fuelDashboardV10', JSON.stringify(window.allFuelData)); updateFuelDatabaseTotals(); populateFuelFilters(); applyFuelFilters();
+                    }
+                    if (newCount === 0 && dupCount > 0) alert(`⚠️ All records were skipped as duplicates.`); else if (dupCount > 0) alert(`✅ Uploaded ${newCount} new records. (${dupCount} duplicates skipped).`); else if (newCount > 0) alert(`✅ Uploaded ${newCount} new records successfully.`);
+                } catch (err) { alert('Error parsing ADNOC Excel file.'); console.error(err); }
+            }; reader.readAsArrayBuffer(file); e.target.value = ''; 
+        });
+
+        function populateFuelFilters() {
+            const months = [...new Set(window.allFuelData.map(t => t.monthStr))];
+            const vehicles = [...new Set(window.allFuelData.map(t => t.vehicle))].sort();
+            const monthSelect = document.getElementById('fuel_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            const vehicleSelect = document.getElementById('fuel_filterVehicle');
+            vehicleSelect.innerHTML = '<option value="all">All Vehicles</option>';
+            vehicles.forEach(v => vehicleSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['fuel_filterStart', 'fuel_filterEnd', 'fuel_filterMonth', 'fuel_filterVehicle'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applyFuelFilters);
+        });
+
+        function applyFuelFilters() {
+            const startDateStr = document.getElementById('fuel_filterStart').value;
+            const endDateStr = document.getElementById('fuel_filterEnd').value;
+            const month = document.getElementById('fuel_filterMonth').value;
+            const vehicle = document.getElementById('fuel_filterVehicle').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredFuelData = window.allFuelData.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.monthStr === month);
+                if (vehicle !== 'all') valid = valid && (t.vehicle === vehicle);
+                return valid;
+            });
+            updateFuelUI();
+        }
+
+        function updateFuelUI() {
+            const totalAmount = window.filteredFuelData.reduce((sum, t) => sum + t.amount, 0);
+            const totalVol = window.filteredFuelData.reduce((sum, t) => sum + t.qty, 0);
+            const uniqueVehicles = window.filteredFuelData.length === 0 ? 0 : new Set(window.filteredFuelData.map(t => t.vehicle)).size;
+
+            document.getElementById('fuel_kpiTotalAmount').innerText = totalAmount.toFixed(2);
+            document.getElementById('fuel_kpiTotalVolume').innerText = totalVol.toFixed(2);
+            document.getElementById('fuel_kpiUniqueVehicles').innerText = uniqueVehicles;
+            document.getElementById('fuel_kpiTransactions').innerText = window.filteredFuelData.length;
+
+            renderFuelTable();
+            renderFuelCharts();
+        }
+
+        function renderFuelTable() {
+            const tbody = document.getElementById('fuel_tableBody'); tbody.innerHTML = '';
+            if(window.filteredFuelData.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">No records found.</td></tr>`; return; }
+
+            [...window.filteredFuelData].reverse().forEach(t => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-600">${t.dateObj.toLocaleString('en-GB')}</td>
+                    <td class="p-4 font-medium text-gray-800">${t.vehicle}</td>
+                    <td class="p-4 text-gray-600">${t.station}</td>
+                    <td class="p-4 text-right">${t.qty.toFixed(2)}</td>
+                    <td class="p-4 font-bold text-gray-700 text-right">${t.amount.toFixed(2)}</td>
+                    <td class="p-4 font-mono text-xs text-gray-400 text-center">${t.invoiceId}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderFuelCharts() {
+            const vData = {}, mData = {}, dData = {};
+            window.filteredFuelData.forEach(t => {
+                vData[t.vehicle] = (vData[t.vehicle] || 0) + t.amount;
+                if (!mData[t.monthStr]) mData[t.monthStr] = { amount: 0, qty: 0 };
+                mData[t.monthStr].amount += t.amount; mData[t.monthStr].qty += t.qty;
+                dData[t.dayStr] = (dData[t.dayStr] || 0) + t.amount;
+            });
+
+            const vSorted = Object.keys(vData).sort((a,b) => vData[b] - vData[a]);
+            if(window.fuelCharts['vehicleChart']) window.fuelCharts['vehicleChart'].destroy();
+            window.fuelCharts['vehicleChart'] = new Chart(document.getElementById('fuel_vehicleChart'), {
+                type: 'bar',
+                data: { labels: vSorted, datasets: [{ label: 'Total Spend (AED)', data: vSorted.map(v => vData[v]), backgroundColor: '#881337', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const mKeys = Object.keys(mData);
+            if(window.fuelCharts['monthChart']) window.fuelCharts['monthChart'].destroy();
+            window.fuelCharts['monthChart'] = new Chart(document.getElementById('fuel_monthChart'), {
+                type: 'bar',
+                data: {
+                    labels: mKeys,
+                    datasets: [
+                        { label: 'Amount (AED)', data: mKeys.map(k => mData[k].amount), backgroundColor: '#881337', yAxisID: 'y', borderRadius: 4 },
+                        { label: 'Volume (L)', data: mKeys.map(k => mData[k].qty), backgroundColor: '#4b5563', yAxisID: 'y1', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { type: 'linear', position: 'left', title: {display: true, text: 'Amount (AED)'}, border:{display:false} }, y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, title: {display: true, text: 'Volume (L)'}, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const dSortedDays = Object.keys(dData).sort((a, b) => parseInt(a) - parseInt(b));
+            const dSortedValues = dSortedDays.map(d => dData[d]);
+
+            if(window.fuelCharts['dateTrendChart']) window.fuelCharts['dateTrendChart'].destroy();
+            window.fuelCharts['dateTrendChart'] = new Chart(document.getElementById('fuel_dateTrendChart'), {
+                type: 'bar',
+                data: { 
+                    labels: dSortedDays, 
+                    datasets: [{ 
+                        label: 'Daily Spend (AED)', data: dSortedValues, 
+                        backgroundColor: '#374151', borderRadius: 4
+                    }] 
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25, right: 15, left: 10 } },
+                    plugins: { legend: { display: false } }, 
+                    scales: { y: { beginAtZero: true, grace: '15%', grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } 
+                }
+            });
+        }
+
+        window.switchFuelTab = function(tab, el) {
+            document.querySelectorAll('#module-fuel [id^="fuel_tab"]').forEach(e => {
+                e.classList.remove('tab-active');
+                e.classList.add('text-gray-500');
+            });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('fuel_workspaceVisuals').classList.toggle('hidden', tab !== 'Visuals');
+            document.getElementById('fuel_workspaceData').classList.toggle('hidden', tab !== 'Data');
+        };
+
+        document.getElementById('fuel_exportBtn').addEventListener('click', () => {
+            if (window.filteredFuelData.length === 0) return alert("No data to export");
+            const exportData = window.filteredFuelData.map(t => ({ "Invoice ID": t.invoiceId, "Date & Time": t.dateStr, "Token Name (Vehicle)": t.vehicle, "Station Name": t.station, "Volume (L)": t.qty, "Amount (AED)": t.amount }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Filtered_Fuel_Data"); XLSX.writeFile(wb, "Fuel_Report.xlsx");
+        });
+
+        // ==========================================
+        // 4. DRIVER LOG LOGIC
+        // ==========================================
+        document.getElementById('driver_excelUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rawArray = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    let headerRowIndex = -1;
+                    
+                    for (let i = 0; i < Math.min(rawArray.length, 10); i++) {
+                        const rowStr = rawArray[i].join(" ").toLowerCase();
+                        if (rowStr.includes('driver name') && rowStr.includes('km')) { headerRowIndex = i; break; }
+                    }
+                    if (headerRowIndex === -1) { alert("Error: Could not locate Driver Log column headers."); return; }
+                    const rawJson = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex, defval: "" });
+                    
+                    const groupedData = {};
+                    rawJson.forEach(row => {
+                        const normalizedRow = {};
+                        for (let key in row) normalizedRow[String(key).trim().toLowerCase()] = row[key];
+                        const driver = normalizedRow['driver name'] || normalizedRow['driver'] || "Unknown";
+                        const vehicle = normalizedRow['vehicle no'] || normalizedRow['vehicle'];
+                        const dateStrRaw = normalizedRow['date'];
+                        const kmRaw = parseFloat(normalizedRow['km']);
+                        const km = isNaN(kmRaw) ? 0 : kmRaw;
+                        
+                        if(!vehicle || !dateStrRaw || km === 0) return;
+                        let dateObj;
+                        if (typeof dateStrRaw === 'number') dateObj = new Date(Math.round((dateStrRaw - 25569) * 86400 * 1000)); else dateObj = new Date(dateStrRaw);
+                        if(isNaN(dateObj)) return; 
+
+                        const dateStr = dateObj.toLocaleDateString('en-GB');
+                        const groupKey = dateStr + "_" + String(vehicle).trim();
+                        
+                        if(!groupedData[groupKey]) {
+                            groupedData[groupKey] = { id: crypto.randomUUID(), dateObj: dateObj, DateStr: dateStr, monthStr: dateObj.toLocaleString('default', { month: 'short', year: 'numeric' }), dayStr: String(dateObj.getDate()).padStart(2, '0'), driver: String(driver).trim(), vehicle: String(vehicle).trim(), km: km, tripCount: 1 };
+                        } else {
+                            groupedData[groupKey].km += km; groupedData[groupKey].tripCount += 1;
+                            if(!groupedData[groupKey].driver.includes(String(driver).trim())) groupedData[groupKey].driver += " & " + String(driver).trim();
+                        }
+                    });
+
+                    const existingKeys = new Set(window.allDriverData.map(t => t.DateStr + "_" + t.vehicle));
+                    let newCount = 0, dupCount = 0;
+                    Object.values(groupedData).forEach(record => {
+                        const checkKey = record.DateStr + "_" + record.vehicle;
+                        if(existingKeys.has(checkKey)) { dupCount++; } else { window.allDriverData.push(record); newCount++; }
+                    });
+
+                    if (newCount > 0) {
+                        window.allDriverData.sort((a, b) => a.dateObj - b.dateObj); localStorage.setItem('driverDashboardV4', JSON.stringify(window.allDriverData)); updateDriverDatabaseTotals(); populateDriverFilters(); applyDriverFilters();
+                        alert(`✅ Uploaded ${newCount} daily logs successfully. ${dupCount > 0 ? `\n(Skipped ${dupCount} duplicate days)` : ''}`);
+                    } else if (dupCount > 0) { alert(`⚠️ All ${dupCount} logs already exist in the system.`); } else { alert("No valid logs found to upload."); }
+                } catch (err) { alert('Error parsing Driver Log Excel file.'); console.error(err); }
+            }; reader.readAsArrayBuffer(file); e.target.value = ''; 
+        });
+
+        function populateDriverFilters() {
+            const months = [...new Set(window.allDriverData.map(t => t.monthStr))];
+            const vehicles = [...new Set(window.allDriverData.map(t => t.vehicle))].sort();
+            
+            const monthSelect = document.getElementById('driver_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            
+            const vehicleSelect = document.getElementById('driver_filterVehicle');
+            vehicleSelect.innerHTML = '<option value="all">All Vehicles</option>';
+            vehicles.forEach(v => vehicleSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['driver_filterStart', 'driver_filterEnd', 'driver_filterMonth', 'driver_filterVehicle'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applyDriverFilters);
+        });
+
+        function applyDriverFilters() {
+            const startDateStr = document.getElementById('driver_filterStart').value;
+            const endDateStr = document.getElementById('driver_filterEnd').value;
+            const month = document.getElementById('driver_filterMonth').value;
+            const entity = document.getElementById('driver_filterVehicle').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredDriverData = window.allDriverData.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.monthStr === month);
+                if (entity !== 'all') valid = valid && (t.driver === entity || t.vehicle === entity);
+                return valid;
+            });
+            updateDriverUI();
+        }
+
+        function updateDriverUI() {
+            const totalKM = window.filteredDriverData.reduce((sum, t) => sum + t.km, 0);
+            const totalTrips = window.filteredDriverData.reduce((sum, t) => sum + (t.tripCount || 1), 0);
+            
+            const uniqueDrivers = window.filteredDriverData.length === 0 ? 0 : new Set(window.filteredDriverData.map(t => t.driver).join(" & ").split(" & ").map(d => d.trim())).size;
+            const uniqueVehicles = window.filteredDriverData.length === 0 ? 0 : new Set(window.filteredDriverData.map(t => t.vehicle)).size;
+
+            document.getElementById('driver_kpiTotalKM').innerText = totalKM.toFixed(0);
+            document.getElementById('driver_kpiTrips').innerText = totalTrips;
+            document.getElementById('driver_kpiDrivers').innerText = uniqueDrivers;
+            document.getElementById('driver_kpiVehicles').innerText = uniqueVehicles;
+
+            renderDriverTable();
+            renderDriverCharts();
+        }
+
+        window.deleteDriverRow = function(id) {
+            if(confirm(`Delete this vehicle's daily log?`)) {
+                window.allDriverData = window.allDriverData.filter(t => t.id !== String(id));
+                localStorage.setItem('driverDashboardV4', JSON.stringify(window.allDriverData));
+                updateDriverDatabaseTotals(); populateDriverFilters(); applyDriverFilters();
+            }
+        };
+
+        function renderDriverTable() {
+            const tbody = document.getElementById('driver_tableBody'); tbody.innerHTML = '';
+            if(window.filteredDriverData.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-500">No records found.</td></tr>`; return; }
+
+            [...window.filteredDriverData].reverse().forEach(t => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-600">${t.DateStr}</td>
+                    <td class="p-4 font-bold text-rose-900">${t.driver}</td>
+                    <td class="p-4 font-medium text-gray-800">${t.vehicle}</td>
+                    <td class="p-4 text-center text-gray-600">${t.tripCount || 1}</td>
+                    <td class="p-4 font-bold text-gray-700 text-right">${t.km.toFixed(1)}</td>
+                    <td class="p-4 text-center no-print"><button onclick="deleteDriverRow('${t.id}')" class="text-gray-400 hover:text-red-500">❌</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderDriverCharts() {
+            const driverGroups = {}, vehGroups = {}, mData = {}, dData = {};
+            
+            window.filteredDriverData.forEach(t => {
+                t.driver.split("&").forEach(d => {
+                    const cleanD = d.trim();
+                    driverGroups[cleanD] = (driverGroups[cleanD] || 0) + (t.km / t.driver.split("&").length);
+                });
+                
+                vehGroups[t.vehicle] = (vehGroups[t.vehicle] || 0) + t.km;
+                mData[t.monthStr] = (mData[t.monthStr] || 0) + t.km;
+                dData[t.dayStr] = (dData[t.dayStr] || 0) + t.km;
+            });
+
+            const drvSorted = Object.keys(driverGroups).sort((a,b) => driverGroups[b] - driverGroups[a]);
+            if(window.driverCharts['driverBar']) window.driverCharts['driverBar'].destroy();
+            window.driverCharts['driverBar'] = new Chart(document.getElementById('driver_barChart'), {
+                type: 'bar',
+                data: { labels: drvSorted, datasets: [{ label: 'Total Distance (KM)', data: drvSorted.map(v => driverGroups[v]), backgroundColor: '#374151', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const vSorted = Object.keys(vehGroups).sort((a,b) => vehGroups[b] - vehGroups[a]);
+            if(window.driverCharts['vehDonut']) window.driverCharts['vehDonut'].destroy();
+            window.driverCharts['vehDonut'] = new Chart(document.getElementById('driver_vehicleDonut'), {
+                type: 'bar',
+                data: { labels: vSorted, datasets: [{ label: 'Total Distance (KM)', data: vSorted.map(v => vehGroups[v]), backgroundColor: MAROON_GREY_COLORS, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            if(window.driverCharts['monthChart']) window.driverCharts['monthChart'].destroy();
+            window.driverCharts['monthChart'] = new Chart(document.getElementById('driver_monthChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(mData), datasets: [{ label: 'Total Distance (KM)', data: Object.values(mData), backgroundColor: '#881337', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const dSortedDays = Object.keys(dData).sort((a, b) => parseInt(a) - parseInt(b));
+            const dSortedValues = dSortedDays.map(d => dData[d]);
+
+            if(window.driverCharts['dateTrend']) window.driverCharts['dateTrend'].destroy();
+            window.driverCharts['dateTrend'] = new Chart(document.getElementById('driver_dateTrendChart'), {
+                type: 'bar',
+                data: { 
+                    labels: dSortedDays, 
+                    datasets: [{ 
+                        label: 'Daily Distance (KM)', data: dSortedValues, 
+                        backgroundColor: '#374151', borderRadius: 4
+                    }] 
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, layout: { padding: { top: 25, right: 15, left: 10 } },
+                    plugins: { legend: { display: false } }, 
+                    scales: { y: { beginAtZero: true, grace: '15%', grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } 
+                }
+            });
+        }
+
+        window.switchDriverTab = function(tab, el) {
+            document.querySelectorAll('#module-driver [id^="driver_tab"]').forEach(e => {
+                e.classList.remove('tab-active');
+                e.classList.add('text-gray-500');
+            });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('driver_workspaceVisuals').classList.toggle('hidden', tab !== 'Visuals');
+            document.getElementById('driver_workspaceData').classList.toggle('hidden', tab !== 'Data');
+        };
+
+        document.getElementById('driver_exportBtn').addEventListener('click', () => {
+            if (window.filteredDriverData.length === 0) return alert("No data to export");
+            const exportData = window.filteredDriverData.map(t => ({ "Date": t.DateStr, "Driver(s)": t.driver, "Vehicle": t.vehicle, "Trips": t.tripCount, "Total KM": t.km }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Driver_Logs"); XLSX.writeFile(wb, "DriverLog_Report.xlsx");
+        });
+
+        // ==========================================
+        // 5. ICT LOGIC (Omni-Sheet Parser for Etisalat Format)
+        // ==========================================
+        document.getElementById('ict_excelUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    let headerRowIdx = -1;
+                    let rawArray = [];
+                    const allMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                    
+                    // Search through all sheets
+                    for (let sheetName of workbook.SheetNames) {
+                        const tempArray = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" });
+                        for (let i = 0; i < Math.min(tempArray.length, 20); i++) {
+                            if (!tempArray[i]) continue;
+                            const rowStr = tempArray[i].map(c => parseExcelHeader(c)).join(" ");
+                            const matches = allMonths.filter(m => rowStr.includes(m));
+                            
+                            if (matches.length >= 2 || (matches.length >= 1 && (rowStr.includes('number') || rowStr.includes('acc') || rowStr.includes('id')))) {
+                                headerRowIdx = i;
+                                rawArray = tempArray;
+                                break;
+                            }
+                        }
+                        if (headerRowIdx !== -1) break;
+                    }
+                    
+                    if (headerRowIdx === -1) { 
+                        alert("Could not locate ICT headers (Jan, Feb, or Number) in any sheet."); 
+                        return; 
+                    }
+                    
+                    const headers = rawArray[headerRowIdx];
+                    let numIdx = headers.findIndex(h => {
+                        let s = parseExcelHeader(h);
+                        return s.includes('number') || s.includes('acc') || s.includes('mobile') || s.includes('id');
+                    });
+                    if(numIdx === -1) numIdx = 0; // fallback
+
+                    const nameIdx = headers.findIndex(h => {
+                        let s = parseExcelHeader(h);
+                        return s.includes('name') || s.includes('user') || s.includes('emp');
+                    });
+                    
+                    const monthIndices = {};
+                    headers.forEach((h, idx) => {
+                        const hl = parseExcelHeader(h).substring(0,3);
+                        if(allMonths.includes(hl)) monthIndices[hl] = idx;
+                    });
+
+                    let newCount = 0, dupCount = 0;
+                    const existingIds = new Set(window.allIctData.map(t => t.id));
+                    const currentYear = new Date().getFullYear();
+
+                    for(let i = headerRowIdx + 1; i < rawArray.length; i++) {
+                        const row = rawArray[i];
+                        if(!row || row.length === 0) continue;
+                        
+                        const accountNum = row[numIdx];
+                        if(accountNum === undefined || accountNum === null || String(accountNum).trim() === '') continue;
+                        
+                        const empName = (nameIdx !== -1 && row[nameIdx]) ? String(row[nameIdx]).trim() : '';
+                        const accountLabel = empName ? `${accountNum} - ${empName}` : String(accountNum);
+
+                        Object.keys(monthIndices).forEach(mLow => {
+                            const rawAmt = row[monthIndices[mLow]];
+                            if(rawAmt === undefined || rawAmt === null || rawAmt === "") return;
+                            
+                            const amt = parseFloat(String(rawAmt).replace(/[^0-9.-]+/g,""));
+                            if(!isNaN(amt) && amt > 0) {
+                                const dObj = new Date(`1 ${mLow} ${currentYear}`);
+                                const mStr = dObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+                                const dStr = dObj.toLocaleDateString('en-GB');
+                                const uid = mStr + "_" + accountLabel;
+
+                                if(existingIds.has(uid)) {
+                                    dupCount++;
+                                } else {
+                                    window.allIctData.push({
+                                        id: uid, dateObj: dObj, dateStr: dStr, monthStr: mStr, account: accountLabel, amount: amt
+                                    });
+                                    existingIds.add(uid);
+                                    newCount++;
+                                }
+                            }
+                        });
+                    }
+
+                    if (newCount > 0) {
+                        window.allIctData.sort((a, b) => a.dateObj - b.dateObj);
+                        localStorage.setItem('ictDashboardV1', JSON.stringify(window.allIctData));
+                        updateIctDatabaseTotals(); populateIctFilters(); applyIctFilters();
+                        alert(`✅ Uploaded ${newCount} ICT records successfully. ${dupCount > 0 ? `\n(Skipped ${dupCount} duplicates)` : ''}`);
+                    } else if (dupCount > 0) {
+                        alert(`⚠️ All ${dupCount} records already exist for these months/accounts.`);
+                    } else {
+                        alert("No valid ICT records found in the sheet.");
+                    }
+
+                } catch (err) { alert('Error parsing ICT Excel file.'); console.error(err); }
+            }; reader.readAsArrayBuffer(file); e.target.value = ''; 
+        });
+
+        window.deleteIctRow = function(id) {
+            if(confirm(`Delete this ICT record?`)) {
+                window.allIctData = window.allIctData.filter(t => t.id !== String(id));
+                localStorage.setItem('ictDashboardV1', JSON.stringify(window.allIctData));
+                updateIctDatabaseTotals(); populateIctFilters(); applyIctFilters();
+            }
+        };
+
+        function populateIctFilters() {
+            const months = [...new Set(window.allIctData.map(t => t.monthStr))];
+            const accounts = [...new Set(window.allIctData.map(t => t.account))].sort();
+            const monthSelect = document.getElementById('ict_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            const accountSelect = document.getElementById('ict_filterAccount');
+            accountSelect.innerHTML = '<option value="all">All Accounts</option>';
+            accounts.forEach(v => accountSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['ict_filterStart', 'ict_filterEnd', 'ict_filterMonth', 'ict_filterAccount'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applyIctFilters);
+        });
+
+        function applyIctFilters() {
+            const startDateStr = document.getElementById('ict_filterStart').value;
+            const endDateStr = document.getElementById('ict_filterEnd').value;
+            const month = document.getElementById('ict_filterMonth').value;
+            const account = document.getElementById('ict_filterAccount').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredIctData = window.allIctData.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.monthStr === month);
+                if (account !== 'all') valid = valid && (t.account === account);
+                return valid;
+            });
+            updateIctUI();
+        }
+
+        function updateIctUI() {
+            const totalAmount = window.filteredIctData.reduce((sum, t) => sum + t.amount, 0);
+            const uniqueAccounts = window.filteredIctData.length === 0 ? 0 : new Set(window.filteredIctData.map(t => t.account)).size;
+
+            document.getElementById('ict_kpiTotalAmount').innerText = totalAmount.toFixed(2);
+            document.getElementById('ict_kpiTransactions').innerText = window.filteredIctData.length;
+            document.getElementById('ict_kpiAccounts').innerText = uniqueAccounts;
+            document.getElementById('ict_kpiAvgAmount').innerText = (window.filteredIctData.length > 0 ? (totalAmount / window.filteredIctData.length) : 0).toFixed(2);
+
+            renderIctTable();
+            renderIctCharts();
+        }
+
+        function renderIctTable() {
+            const tbody = document.getElementById('ict_tableBody'); tbody.innerHTML = '';
+            if(window.filteredIctData.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">No records found.</td></tr>`; return; }
+
+            [...window.filteredIctData].reverse().forEach(t => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-600">${t.dateStr}</td>
+                    <td class="p-4 font-medium text-gray-800">${t.monthStr}</td>
+                    <td class="p-4 font-mono text-gray-600">${t.account}</td>
+                    <td class="p-4 font-bold text-gray-700 text-right">${t.amount.toFixed(2)}</td>
+                    <td class="p-4 text-center no-print"><button onclick="deleteIctRow('${t.id}')" class="text-gray-400 hover:text-red-500">❌</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderIctCharts() {
+            const accData = {}, mData = {}, stackData = {};
+            window.filteredIctData.forEach(t => {
+                accData[t.account] = (accData[t.account] || 0) + t.amount;
+                mData[t.monthStr] = (mData[t.monthStr] || 0) + t.amount;
+                if (!stackData[t.monthStr]) stackData[t.monthStr] = {};
+                stackData[t.monthStr][t.account] = (stackData[t.monthStr][t.account] || 0) + t.amount;
+            });
+
+            const aSorted = Object.keys(accData).sort((a,b) => accData[b] - accData[a]);
+            if(window.ictCharts['accChart']) window.ictCharts['accChart'].destroy();
+            window.ictCharts['accChart'] = new Chart(document.getElementById('ict_accountChart'), {
+                type: 'bar',
+                data: { labels: aSorted, datasets: [{ label: 'Total Amount', data: aSorted.map(v => accData[v]), backgroundColor: MAROON_GREY_COLORS, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const mKeys = Object.keys(mData);
+            if(window.ictCharts['monthChart']) window.ictCharts['monthChart'].destroy();
+            window.ictCharts['monthChart'] = new Chart(document.getElementById('ict_monthTrendChart'), {
+                type: 'bar',
+                data: { labels: mKeys, datasets: [{ label: 'Total Amount', data: mKeys.map(k => mData[k]), backgroundColor: '#881337', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const accountsList = Object.keys(accData);
+            const datasets = accountsList.map((acc, i) => {
+                return {
+                    label: acc,
+                    data: mKeys.map(m => stackData[m][acc] || 0),
+                    backgroundColor: MAROON_GREY_COLORS[i % MAROON_GREY_COLORS.length],
+                    borderRadius: 4
+                };
+            });
+
+            if(window.ictCharts['stackChart']) window.ictCharts['stackChart'].destroy();
+            window.ictCharts['stackChart'] = new Chart(document.getElementById('ict_stackedMonthChart'), {
+                type: 'bar',
+                data: { labels: mKeys, datasets: datasets },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10} } },
+                        datalabels: { display: function(context) { return context.dataset.data[context.dataIndex] > 0; }, color: '#ffffff', anchor: 'center', align: 'center' }
+                    }, 
+                    scales: { y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { stacked: true, grid: { display: false }, border:{display:false} } } 
+                }
+            });
+        }
+
+        window.switchIctTab = function(tab, el) {
+            document.querySelectorAll('#module-ict [id^="ict_tab"]').forEach(e => { e.classList.remove('tab-active'); e.classList.add('text-gray-500'); });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('ict_workspaceVisuals').classList.toggle('hidden', tab !== 'Visuals');
+            document.getElementById('ict_workspaceData').classList.toggle('hidden', tab !== 'Data');
+        };
+
+        document.getElementById('ict_exportBtn').addEventListener('click', () => {
+            if (window.filteredIctData.length === 0) return alert("No data to export");
+            const exportData = window.filteredIctData.map(t => ({ "Date": t.dateStr, "Month": t.monthStr, "Account": t.account, "Amount (AED)": t.amount }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ICT_Logs"); XLSX.writeFile(wb, "ICT_Report.xlsx");
+        });
+
+        // ==========================================
+        // 6. W&E LOGIC (Omni-Sheet Parser for WED Format)
+        // ==========================================
+        document.getElementById('we_excelUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    let headerRow1 = -1;
+                    let headerRow2 = -1;
+                    let rawArray = [];
+                    const allMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+                    for (let sheetName of workbook.SheetNames) {
+                        const tempArray = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" });
+                        for (let i = 0; i < Math.min(tempArray.length, 20); i++) {
+                            if (!tempArray[i]) continue;
+                            const rowStr = tempArray[i].map(c => parseExcelHeader(c)).join(" ");
+                            const matches = allMonths.filter(m => rowStr.includes(m));
+                            
+                            if (matches.length >= 2) {
+                                headerRow1 = i;
+                                headerRow2 = i + 1;
+                                rawArray = tempArray;
+                                break;
+                            }
+                        }
+                        if (headerRow1 !== -1) break;
+                    }
+
+                    if(headerRow1 === -1) { alert("Could not locate Water & Electricity headers (Jan, Feb...) in any sheet."); return; }
+
+                    const headers1 = rawArray[headerRow1];
+                    const headers2 = rawArray.length > headerRow1 + 1 ? rawArray[headerRow1 + 1] : [];
+
+                    let locIdx = headers1.findIndex(h => {
+                        let s = parseExcelHeader(h);
+                        return s.includes('loc') || s.includes('site') || s.includes('acc') || s.includes('premise') || s.includes('desc');
+                    });
+                    if(locIdx === -1) locIdx = 0; 
+
+                    let hasSubHeaders = false;
+                    if (headers2 && headers2.some(h => {
+                        let s = parseExcelHeader(h);
+                        return s.includes('water') || s.includes('elec') || s.includes('pow') || s.includes('cool');
+                    })) {
+                        hasSubHeaders = true;
+                    }
+
+                    let currentMonth = null;
+                    const colMappings = []; 
+
+                    for(let c = 0; c < headers1.length; c++) {
+                        let val1 = parseExcelHeader(headers1[c]);
+                        
+                        if(val1 && val1 !== '') {
+                            const v1_low = val1.substring(0,3);
+                            if(allMonths.includes(v1_low)) { currentMonth = v1_low; } 
+                            else if(c > locIdx + 1) { currentMonth = null; } 
+                        }
+                        
+                        if(currentMonth) {
+                            let subType = 'Utility';
+                            if (hasSubHeaders) {
+                                const h2val = String(headers2[c] || "").trim();
+                                if (h2val && h2val !== 'undefined' && h2val !== 'null') subType = h2val;
+                            }
+                            colMappings.push({ colIndex: c, month: currentMonth, type: subType });
+                        }
+                    }
+
+                    let newCount = 0, dupCount = 0;
+                    const existingIds = new Set(window.allWeData.map(t => t.id));
+                    const currentYear = new Date().getFullYear();
+                    const startDataRow = hasSubHeaders ? headerRow2 + 1 : headerRow1 + 1;
+
+                    for(let i = startDataRow; i < rawArray.length; i++) {
+                        const row = rawArray[i];
+                        if(!row || row.length === 0) continue;
+                        
+                        const loc = row[locIdx];
+                        if(loc === undefined || loc === null || String(loc).trim() === '') continue;
+
+                        colMappings.forEach(mapping => {
+                            const rawAmt = row[mapping.colIndex];
+                            if(rawAmt === undefined || rawAmt === null || rawAmt === "") return;
+                            
+                            const amt = parseFloat(String(rawAmt).replace(/[^0-9.-]+/g,""));
+                            if(!isNaN(amt) && amt !== 0) {
+                                const accName = String(loc).trim() + " (" + mapping.type.charAt(0).toUpperCase() + mapping.type.slice(1).toLowerCase() + ")";
+                                const dObj = new Date(`1 ${mapping.month} ${currentYear}`);
+                                const mStr = dObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+                                const dStr = dObj.toLocaleDateString('en-GB');
+                                const uid = mStr + "_" + accName;
+
+                                if(existingIds.has(uid)) {
+                                    dupCount++;
+                                } else {
+                                    window.allWeData.push({
+                                        id: uid, dateObj: dObj, dateStr: dStr, monthStr: mStr, account: accName, amount: amt
+                                    });
+                                    existingIds.add(uid);
+                                    newCount++;
+                                }
+                            }
+                        });
+                    }
+
+                    if (newCount > 0) {
+                        window.allWeData.sort((a, b) => a.dateObj - b.dateObj);
+                        localStorage.setItem('weDashboardV1', JSON.stringify(window.allWeData));
+                        updateWeDatabaseTotals(); populateWeFilters(); applyWeFilters();
+                        alert(`✅ Uploaded ${newCount} W&E records successfully. ${dupCount > 0 ? `\n(Skipped ${dupCount} duplicates)` : ''}`);
+                    } else if (dupCount > 0) {
+                        alert(`⚠️ All ${dupCount} records already exist for these months/accounts.`);
+                    } else {
+                        alert("No valid W&E records found in the sheet.");
+                    }
+
+                } catch (err) { alert('Error parsing W&E Excel file.'); console.error(err); }
+            }; reader.readAsArrayBuffer(file); e.target.value = ''; 
+        });
+
+        window.deleteWeRow = function(id) {
+            if(confirm(`Delete this Water/Electricity record?`)) {
+                window.allWeData = window.allWeData.filter(t => t.id !== String(id));
+                localStorage.setItem('weDashboardV1', JSON.stringify(window.allWeData));
+                updateWeDatabaseTotals(); populateWeFilters(); applyWeFilters();
+            }
+        };
+
+        function populateWeFilters() {
+            const months = [...new Set(window.allWeData.map(t => t.monthStr))];
+            const accounts = [...new Set(window.allWeData.map(t => t.account))].sort();
+            const monthSelect = document.getElementById('we_filterMonth');
+            monthSelect.innerHTML = '<option value="all">All Months</option>';
+            months.forEach(m => monthSelect.innerHTML += `<option value="${m}">${m}</option>`);
+            const accountSelect = document.getElementById('we_filterAccount');
+            accountSelect.innerHTML = '<option value="all">All Accounts</option>';
+            accounts.forEach(v => accountSelect.innerHTML += `<option value="${v}">${v}</option>`);
+        }
+
+        ['we_filterStart', 'we_filterEnd', 'we_filterMonth', 'we_filterAccount'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', applyWeFilters);
+        });
+
+        function applyWeFilters() {
+            const startDateStr = document.getElementById('we_filterStart').value;
+            const endDateStr = document.getElementById('we_filterEnd').value;
+            const month = document.getElementById('we_filterMonth').value;
+            const account = document.getElementById('we_filterAccount').value;
+
+            let startDate = startDateStr ? new Date(startDateStr) : null;
+            let endDate = endDateStr ? new Date(endDateStr) : null;
+            if (endDate) endDate.setHours(23, 59, 59);
+
+            window.filteredWeData = window.allWeData.filter(t => {
+                let valid = true;
+                if (startDate) valid = valid && (t.dateObj >= startDate);
+                if (endDate) valid = valid && (t.dateObj <= endDate);
+                if (month !== 'all') valid = valid && (t.monthStr === month);
+                if (account !== 'all') valid = valid && (t.account === account);
+                return valid;
+            });
+            updateWeUI();
+        }
+
+        function updateWeUI() {
+            const totalAmount = window.filteredWeData.reduce((sum, t) => sum + t.amount, 0);
+            const uniqueAccounts = window.filteredWeData.length === 0 ? 0 : new Set(window.filteredWeData.map(t => t.account)).size;
+
+            document.getElementById('we_kpiTotalAmount').innerText = totalAmount.toFixed(2);
+            document.getElementById('we_kpiTransactions').innerText = window.filteredWeData.length;
+            document.getElementById('we_kpiAccounts').innerText = uniqueAccounts;
+            document.getElementById('we_kpiAvgAmount').innerText = (window.filteredWeData.length > 0 ? (totalAmount / window.filteredWeData.length) : 0).toFixed(2);
+
+            renderWeTable();
+            renderWeCharts();
+        }
+
+        function renderWeTable() {
+            const tbody = document.getElementById('we_tableBody'); tbody.innerHTML = '';
+            if(window.filteredWeData.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-500">No records found.</td></tr>`; return; }
+
+            [...window.filteredWeData].reverse().forEach(t => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-gray-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-600">${t.dateStr}</td>
+                    <td class="p-4 font-medium text-gray-800">${t.monthStr}</td>
+                    <td class="p-4 font-mono text-gray-600">${t.account}</td>
+                    <td class="p-4 font-bold text-gray-700 text-right">${t.amount.toFixed(2)}</td>
+                    <td class="p-4 text-center no-print"><button onclick="deleteWeRow('${t.id}')" class="text-gray-400 hover:text-red-500">❌</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderWeCharts() {
+            const accData = {}, mData = {}, stackData = {};
+            window.filteredWeData.forEach(t => {
+                accData[t.account] = (accData[t.account] || 0) + t.amount;
+                mData[t.monthStr] = (mData[t.monthStr] || 0) + t.amount;
+                if (!stackData[t.monthStr]) stackData[t.monthStr] = {};
+                stackData[t.monthStr][t.account] = (stackData[t.monthStr][t.account] || 0) + t.amount;
+            });
+
+            const aSorted = Object.keys(accData).sort((a,b) => accData[b] - accData[a]);
+            if(window.weCharts['accChart']) window.weCharts['accChart'].destroy();
+            window.weCharts['accChart'] = new Chart(document.getElementById('we_accountChart'), {
+                type: 'bar',
+                data: { labels: aSorted, datasets: [{ label: 'Total Amount', data: aSorted.map(v => accData[v]), backgroundColor: MAROON_GREY_COLORS, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const mKeys = Object.keys(mData);
+            if(window.weCharts['monthChart']) window.weCharts['monthChart'].destroy();
+            window.weCharts['monthChart'] = new Chart(document.getElementById('we_monthTrendChart'), {
+                type: 'bar',
+                data: { labels: mKeys, datasets: [{ label: 'Total Amount', data: mKeys.map(k => mData[k]), backgroundColor: '#374151', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { grid: { display: false }, border:{display:false} } } }
+            });
+
+            const accountsList = Object.keys(accData);
+            const datasets = accountsList.map((acc, i) => {
+                return {
+                    label: acc,
+                    data: mKeys.map(m => stackData[m][acc] || 0),
+                    backgroundColor: MAROON_GREY_COLORS[(i+3) % MAROON_GREY_COLORS.length],
+                    borderRadius: 4
+                };
+            });
+
+            if(window.weCharts['stackChart']) window.weCharts['stackChart'].destroy();
+            window.weCharts['stackChart'] = new Chart(document.getElementById('we_stackedMonthChart'), {
+                type: 'bar',
+                data: { labels: mKeys, datasets: datasets },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 10} } },
+                        datalabels: { display: function(context) { return context.dataset.data[context.dataIndex] > 0; }, color: '#ffffff', anchor: 'center', align: 'center' }
+                    }, 
+                    scales: { y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, border:{display:false} }, x: { stacked: true, grid: { display: false }, border:{display:false} } } 
+                }
+            });
+        }
+
+        window.switchWeTab = function(tab, el) {
+            document.querySelectorAll('#module-we [id^="we_tab"]').forEach(e => { e.classList.remove('tab-active'); e.classList.add('text-gray-500'); });
+            el.classList.add('tab-active'); el.classList.remove('text-gray-500');
+            document.getElementById('we_workspaceVisuals').classList.toggle('hidden', tab !== 'Visuals');
+            document.getElementById('we_workspaceData').classList.toggle('hidden', tab !== 'Data');
+        };
+
+        document.getElementById('we_exportBtn').addEventListener('click', () => {
+            if (window.filteredWeData.length === 0) return alert("No data to export");
+            const exportData = window.filteredWeData.map(t => ({ "Date": t.dateStr, "Month": t.monthStr, "Account": t.account, "Amount (AED)": t.amount }));
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "WE_Logs"); XLSX.writeFile(wb, "Water_Electricity_Report.xlsx");
+        });
+
+        // ==========================================
+        // AUTHENTICATION & DATA MANAGEMENT LOGIC
+        // ==========================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial password if not exists
+            if (!localStorage.getItem('mncAdminPassword')) {
+                localStorage.setItem('mncAdminPassword', 'MNCADMN@2026');
+            }
+        });
+
+        window.attemptLogin = function() {
+            const user = document.getElementById('loginUsername').value;
+            const pass = document.getElementById('loginPassword').value;
+            const storedPass = localStorage.getItem('mncAdminPassword');
+
+            if (user === 'MNC-ADMN' && pass === storedPass) {
+                document.getElementById('app-login').classList.add('hidden');
+                document.getElementById('app-dashboard').classList.remove('hidden');
+                document.getElementById('loginError').classList.add('hidden');
+                document.getElementById('loginPassword').value = '';
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        };
+
+        window.logout = function() {
+            document.getElementById('app-dashboard').classList.add('hidden');
+            document.getElementById('app-login').classList.remove('hidden');
+        };
+
+        window.openPasswordModal = function() {
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('passwordModal').classList.remove('hidden');
+        };
+
+        window.saveNewPassword = function() {
+            const adminPass = document.getElementById('adminPassword').value;
+            const oldPass = document.getElementById('oldPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            const storedPass = localStorage.getItem('mncAdminPassword');
+
+            if (adminPass !== 'MNCHCM@2026') return alert("Incorrect Admin Authorization Password. Request denied.");
+            if (oldPass !== storedPass) return alert("Incorrect Old Password. Authorization denied.");
+            if (newPass.length < 6) return alert("New Password must be at least 6 characters.");
+            if (newPass !== confirmPass) return alert("New Passwords do not match.");
+
+            localStorage.setItem('mncAdminPassword', newPass);
+            alert("Password updated successfully.");
+            document.getElementById('passwordModal').classList.add('hidden');
+        };
+
+        window.backupSystemData = function() {
+            const backupObj = {
+                salikData: localStorage.getItem('salikDataV16'),
+                darbData: localStorage.getItem('darbDataV5'),
+                fuelData: localStorage.getItem('fuelDashboardV10'),
+                driverData: localStorage.getItem('driverDashboardV4'),
+                ictData: localStorage.getItem('ictDashboardV1'),
+                weData: localStorage.getItem('weDashboardV1')
+            };
+
+            const blob = new Blob([JSON.stringify(backupObj)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.download = `MNC_Admin_Backup_${dateStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        window.restoreSystemData = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.salikData) localStorage.setItem('salikDataV16', data.salikData);
+                    if (data.darbData) localStorage.setItem('darbDataV5', data.darbData);
+                    if (data.fuelData) localStorage.setItem('fuelDashboardV10', data.fuelData);
+                    if (data.driverData) localStorage.setItem('driverDashboardV4', data.driverData);
+                    if (data.ictData) localStorage.setItem('ictDashboardV1', data.ictData);
+                    if (data.weData) localStorage.setItem('weDashboardV1', data.weData);
+
+                    alert("System Data Restored Successfully! The dashboard has been updated.");
+                    initSalik();
+                    initDarb();
+                    initFuel();
+                    initDriver();
+                    initIct();
+                    initWe();
+                } catch (err) {
+                    alert("Invalid backup file detected. Restoration aborted.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; 
+        };
+    </script>
+</body>
+</html>
